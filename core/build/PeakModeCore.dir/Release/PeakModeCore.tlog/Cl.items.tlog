@@ -1,0 +1,6 @@
+C:\Users\wladek\PeakMode\core\engine\ProfileManager.cpp;C:\Users\wladek\PeakMode\core\build\PeakModeCore.dir\Release\ProfileManager.obj
+C:\Users\wladek\PeakMode\core\engine\Snapshot.cpp;C:\Users\wladek\PeakMode\core\build\PeakModeCore.dir\Release\Snapshot.obj
+C:\Users\wladek\PeakMode\core\engine\Orchestrator.cpp;C:\Users\wladek\PeakMode\core\build\PeakModeCore.dir\Release\Orchestrator.obj
+C:\Users\wladek\PeakMode\core\modules\WindowsTweaks.cpp;C:\Users\wladek\PeakMode\core\build\PeakModeCore.dir\Release\WindowsTweaks.obj
+C:\Users\wladek\PeakMode\core\modules\NvidiaTweaks.cpp;C:\Users\wladek\PeakMode\core\build\PeakModeCore.dir\Release\NvidiaTweaks.obj
+C:\Users\wladek\PeakMode\core\modules\InterruptTweaks.cpp;C:\Users\wladek\PeakMode\core\build\PeakModeCore.dir\Release\InterruptTweaks.obj

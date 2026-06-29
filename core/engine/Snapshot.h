@@ -1,25 +1,23 @@
 #pragma once
-#include <string>
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 
 namespace PeakMode {
 
-// Captures current system state before any tweaks are applied.
-// All modules write their "before" values here so Orchestrator
-// can do a full rollback on restore().
 struct SystemSnapshot {
     // Windows
-    DWORD  originalProcessPriority  = NORMAL_PRIORITY_CLASS;
-    DWORD_PTR originalAffinityMask  = 0;
-    GUID   originalPowerPlan        = {};
-    bool   naggleWasEnabled         = true;
-    UINT   originalTimerResolution  = 156; // in 100-ns units (15.6ms default)
+    DWORD     originalProcessPriority  = NORMAL_PRIORITY_CLASS;
+    DWORD_PTR originalAffinityMask     = 0;
+    GUID      originalPowerPlan        = {};
+    bool      nagleWasEnabled          = true;
+    ULONG     originalTimerResolution  = 156000; // in 100-ns units (15.6ms default)
 
     // NVIDIA
-    int    originalPowerMode        = 0;   // NVAPI NV_GPU_PERF_PSTATE_ID
-    bool   vSyncWasOn               = true;
+    int  originalPowerMode = 0;
+    bool vSyncWasOn        = true;
 
     // Interrupt
-    DWORD  nicInterruptAffinity     = 0;
+    DWORD nicInterruptAffinity = 0;
 };
 
 class Snapshot {

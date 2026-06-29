@@ -1,0 +1,6 @@
+C:/Users/wladek/PeakMode/core/build/PeakModeCore.dir/Debug/ProfileManager.obj
+C:/Users/wladek/PeakMode/core/build/PeakModeCore.dir/Debug/Snapshot.obj
+C:/Users/wladek/PeakMode/core/build/PeakModeCore.dir/Debug/Orchestrator.obj
+C:/Users/wladek/PeakMode/core/build/PeakModeCore.dir/Debug/WindowsTweaks.obj
+C:/Users/wladek/PeakMode/core/build/PeakModeCore.dir/Debug/NvidiaTweaks.obj
+C:/Users/wladek/PeakMode/core/build/PeakModeCore.dir/Debug/InterruptTweaks.obj

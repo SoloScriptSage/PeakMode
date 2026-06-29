@@ -1,9 +1,15 @@
-#include "Snapshot.h"
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <timeapi.h>
+#include <powrprof.h>
+#include "Snapshot.h"
+
+#pragma comment(lib, "powrprof.lib")
+#pragma comment(lib, "winmm.lib")
 
 namespace PeakMode {
 
-SystemSnapshot Snapshot::s_snap  = {};
+SystemSnapshot Snapshot::s_snap     = {};
 bool           Snapshot::s_captured = false;
 
 void Snapshot::capture() {
@@ -11,11 +17,10 @@ void Snapshot::capture() {
 
     // Timer resolution
     TIMECAPS tc;
-    if (timeGetDevCaps(&tc, sizeof(tc)) == MMSYSERR_NOERROR) {
-        s_snap.originalTimerResolution = tc.wPeriodMin;
-    }
+    if (timeGetDevCaps(&tc, sizeof(tc)) == MMSYSERR_NOERROR)
+        s_snap.originalTimerResolution = tc.wPeriodMin * 1000; // convert ms→100ns
 
-    // Current process priority
+    // Process priority
     s_snap.originalProcessPriority = GetPriorityClass(GetCurrentProcess());
 
     // CPU affinity
@@ -23,9 +28,12 @@ void Snapshot::capture() {
     GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask);
     s_snap.originalAffinityMask = procMask;
 
-    // TODO: capture power plan GUID via PowerGetActiveScheme()
-    // TODO: capture NVAPI power state
-    // TODO: capture NIC interrupt affinity via SetupAPI / registry
+    // Power plan
+    GUID* current = nullptr;
+    if (PowerGetActiveScheme(nullptr, &current) == ERROR_SUCCESS) {
+        s_snap.originalPowerPlan = *current;
+        LocalFree(current);
+    }
 
     s_captured = true;
 }

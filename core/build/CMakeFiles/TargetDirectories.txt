@@ -1,0 +1,4 @@
+C:/Users/wladek/PeakMode/core/build/CMakeFiles/PeakModeCore.dir
+C:/Users/wladek/PeakMode/core/build/CMakeFiles/peakmode_test.dir
+C:/Users/wladek/PeakMode/core/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/wladek/PeakMode/core/build/CMakeFiles/ZERO_CHECK.dir

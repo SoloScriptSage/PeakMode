@@ -4,6 +4,7 @@
 #include "../modules/WindowsTweaks.h"
 #include "../modules/NvidiaTweaks.h"
 #include "../modules/InterruptTweaks.h"
+#include <cstdio>
 
 namespace PeakMode {
 
@@ -15,13 +16,10 @@ Orchestrator& Orchestrator::instance() {
 void Orchestrator::activate(const std::string& profilePath) {
     if (m_state == ProfileState::ACTIVE) return;
 
-    // 1. Load profile config
     auto profile = ProfileManager::load(profilePath);
 
-    // 2. Snapshot current system state (so we can restore it)
     Snapshot::capture();
 
-    // 3. Apply tweaks in order
     if (profile.windowsTweaks)   WindowsTweaks::apply(profile);
     if (profile.nvidiaTweaks)    NvidiaTweaks::apply(profile);
     if (profile.interruptTweaks) InterruptTweaks::apply(profile);
@@ -32,7 +30,6 @@ void Orchestrator::activate(const std::string& profilePath) {
 void Orchestrator::restore() {
     if (m_state == ProfileState::IDLE) return;
 
-    // Rollback everything — reverse order matters
     InterruptTweaks::restore();
     NvidiaTweaks::restore();
     WindowsTweaks::restore();
