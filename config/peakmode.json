@@ -1,0 +1,29 @@
+{
+  "name": "default",
+  "windowsTweaks": true,
+  "nvidiaTweaks": true,
+  "interruptTweaks": true,
+
+  "windows": {
+    "setProcPriorityHigh": true,
+    "pinToPCores": true,
+    "setUltimatePerf": true,
+    "disableNagle": true,
+    "disableSysMain": true,
+    "disableSearchIndex": true,
+    "setTimerResolution": true
+  },
+
+  "nvidia": {
+    "maxPerfMode": true,
+    "disableVSync": true,
+    "disablePrerenderFrames": true,
+    "enableLowLatency": true
+  },
+
+  "interrupt": {
+    "redirectNicIrq": true,
+    "disableNicInterruptMod": true,
+    "disableHpet": false
+  }
+}

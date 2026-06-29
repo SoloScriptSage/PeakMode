@@ -1,0 +1,62 @@
+# Build output
+build/
+out/
+bin/
+obj/
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sln.docinfo
+*.vcxproj.user
+*.VC.db
+*.VC.opendb
+*.opensdf
+*.sdf
+ipch/
+
+# C# / .NET
+*.csproj.user
+*.nupkg
+*.snupkg
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.nuget/
+packages/
+
+# NVAPI SDK (download separately — don't commit)
+core/third_party/nvapi/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
