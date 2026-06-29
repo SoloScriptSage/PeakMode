@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>PeakModeTray</AssemblyName>
+    <RootNamespace>PeakModeTray</RootNamespace>
+    <!-- Copy PeakModeCore.dll to output automatically -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Copy the C++ DLL next to the exe on build -->
+    <None Include="..\..\core\build\Release\PeakModeCore.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Condition="Exists('..\..\core\build\Release\PeakModeCore.dll')" />
+  </ItemGroup>
+
+</Project>

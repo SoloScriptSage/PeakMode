@@ -226,7 +226,12 @@ EXPORTS
 	?setServiceState@WindowsTweaks@PeakMode@@CAXPEB_W_N@Z
 	?setTimerResolution@WindowsTweaks@PeakMode@@CAX_N@Z
 	?shutdownNvAPI@NvidiaTweaks@PeakMode@@CAXXZ
+	?state@Orchestrator@PeakMode@@QEBA?AW4ProfileState@2@XZ
 	?what@exception@std@@UEBAPEBDXZ
+	Orchestrator_Activate
+	Orchestrator_GetInstance
+	Orchestrator_GetState
+	Orchestrator_Restore
 	__local_stdio_printf_options
 	_vfprintf_l
 	_vfwprintf_l

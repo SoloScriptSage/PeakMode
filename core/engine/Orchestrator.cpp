@@ -17,7 +17,6 @@ void Orchestrator::activate(const std::string& profilePath) {
     if (m_state == ProfileState::ACTIVE) return;
 
     auto profile = ProfileManager::load(profilePath);
-
     Snapshot::capture();
 
     if (profile.windowsTweaks)   WindowsTweaks::apply(profile);
@@ -39,3 +38,21 @@ void Orchestrator::restore() {
 }
 
 } // namespace PeakMode
+
+// ── C exports ─────────────────────────────────────────────────────────────────
+PeakMode::Orchestrator* Orchestrator_GetInstance() {
+    return &PeakMode::Orchestrator::instance();
+}
+
+void Orchestrator_Activate(PeakMode::Orchestrator* inst, const char* profilePath) {
+    if (inst) inst->activate(profilePath);
+}
+
+void Orchestrator_Restore(PeakMode::Orchestrator* inst) {
+    if (inst) inst->restore();
+}
+
+int Orchestrator_GetState(PeakMode::Orchestrator* inst) {
+    if (!inst) return 0;
+    return static_cast<int>(inst->state());
+}
