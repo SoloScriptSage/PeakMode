@@ -1,24 +1,22 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <string>
 #include "../engine/ProfileManager.h"
+#include "../engine/Snapshot.h"
 
 namespace PeakMode {
 
+// Changes settings in the NVIDIA driver's global (base) DRS profile, the
+// same place NVIDIA Control Panel "Global Settings" writes.
+// Snapshot entry kind owned here: "drs".
 class NvidiaTweaks {
 public:
-    static bool apply(const Profile& profile);
-    static void restore();
+    static void apply(const Profile& profile);
+    static void releaseRuntime();          // NvAPI_Unload
 
-private:
-    static bool initNvAPI();
-    static void shutdownNvAPI();
+    static bool ownsKind(const std::string& kind);
+    static bool restoreEntry(const Snapshot::Entry& e, std::string& error);
 
-    // DRS = Driver Registry Settings (same as NVIDIA Control Panel writes)
-    static bool applyDRSSettings(const Profile& p);
-    static void restoreDRSSettings();
-
-    static bool s_initialized;
+    static void dump();                    // print current DRS values
 };
 
 } // namespace PeakMode

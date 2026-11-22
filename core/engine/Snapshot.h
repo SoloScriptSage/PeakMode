@@ -1,34 +1,70 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "../third_party/nlohmann/json.hpp"
 
 namespace PeakMode {
 
-struct SystemSnapshot {
-    // Windows
-    DWORD     originalProcessPriority  = NORMAL_PRIORITY_CLASS;
-    DWORD_PTR originalAffinityMask     = 0;
-    GUID      originalPowerPlan        = {};
-    bool      nagleWasEnabled          = true;
-    ULONG     originalTimerResolution  = 156000; // in 100-ns units (15.6ms default)
-
-    // NVIDIA
-    int  originalPowerMode = 0;
-    bool vSyncWasOn        = true;
-
-    // Interrupt
-    DWORD nicInterruptAffinity = 0;
-};
-
+// Write-ahead journal of every system change PeakMode makes.
+//
+// Rule for modules: call Snapshot::record() with the ORIGINAL value BEFORE
+// changing anything. If record() returns false, do not make the change.
+// The journal lives on disk (<state dir>\snapshot.json) so that a crash,
+// kill or reboot while active can still be undone from a fresh process.
+//
+// Entry format: a JSON object with at least "kind". Entries with
+// "deferred": true are restored after all others (e.g. NIC restart after
+// its registry values are back). Restore handlers must be idempotent:
+// "already in the original state" counts as success.
 class Snapshot {
 public:
-    static void capture();
-    static void clear();
-    static const SystemSnapshot& get();
+    using Entry   = nlohmann::json;
+    using Handler = std::function<bool(const Entry&, std::string& error)>;
 
-private:
-    static SystemSnapshot s_snap;
-    static bool           s_captured;
+    struct RestoreReport {
+        bool                     ok = false;   // everything restored, file removed
+        int                      restored = 0;
+        int                      failed   = 0;
+        std::vector<std::string> errors;
+    };
+
+    // %ProgramData%\PeakMode, created with an admin-only-writable ACL and
+    // required to be owned by Administrators or SYSTEM. Empty on failure.
+    static std::wstring stateDir();
+    static std::string  stateDirError();
+    static std::wstring filePath();
+
+    static bool exists();
+
+    // Start a new journal. Fails if one already exists (leftover).
+    static bool begin(const std::string& profileName, std::string& error);
+
+    // Append and flush to disk. Returns false if the write failed.
+    static bool record(const Entry& entry);
+
+    static bool markActive();
+
+    // Restore every entry from the on-disk journal using `handler`.
+    // Removes the file if all entries succeed; otherwise rewrites it with
+    // only the failed entries so a later retry can finish the job.
+    static RestoreReport restoreAll(const Handler& handler);
+
+    // Read-only view of the on-disk journal (for status / diagnostics).
+    static bool load(Entry& out, std::string& error);
+
+    // Test hook: use `dir` instead of %ProgramData%\PeakMode and skip the
+    // ACL/owner checks. Pass an empty string to go back to the default.
+    static void setStateDirForTests(const std::wstring& dir);
+
+    // Test hook: terminate the process right after the Nth successful
+    // record() (simulates a crash mid-activation). 0 = off.
+    static void setDieAfterRecordsForTests(int n);
 };
+
+// Hex helpers for binary registry data in journal entries.
+std::string ToHex(const unsigned char* data, size_t len);
+std::vector<unsigned char> FromHex(const std::string& hex);
 
 } // namespace PeakMode

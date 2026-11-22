@@ -13,7 +13,9 @@ endif()
 
 # ── Core DLL ──────────────────────────────────────────────────────────────────
 add_library(PeakModeCore SHARED
+    engine/Log.cpp
     engine/ProfileManager.cpp
+    engine/Registry.cpp
     engine/Snapshot.cpp
     engine/Orchestrator.cpp
     modules/WindowsTweaks.cpp
@@ -29,10 +31,11 @@ target_include_directories(PeakModeCore PRIVATE
 target_link_libraries(PeakModeCore PRIVATE
     ntdll
     powrprof
-    winmm
-    ws2_32
     iphlpapi
-    setupapi
+    cfgmgr32
+    advapi32
+    ole32
+    shell32
     ${NVAPI_DIR}/amd64/nvapi64.lib
 )
 

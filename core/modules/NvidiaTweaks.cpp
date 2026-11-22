@@ -1,228 +1,186 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <cstdio>
 
-#include "../third_party/nvapi/nvapi.h"
-#include "../third_party/nvapi/NvApiDriverSettings.h"
+#include "nvapi.h"
+#include "NvApiDriverSettings.h"
 
 #include "NvidiaTweaks.h"
-#include "../engine/ProfileManager.h"
+#include "../engine/Log.h"
 
 // nvapi64.lib is linked by CMake (absolute path), not via #pragma comment
 
 namespace PeakMode {
 
-bool NvidiaTweaks::s_initialized = false;
+namespace {
 
-// ── Saved state for restore ───────────────────────────────────────────────────
-static NvU32 s_prevPowerPolicy    = PREFERRED_PSTATE_ADAPTIVE;
-static NvU32 s_prevPrerenderLimit = 3;
-static NvU32 s_prevVsync          = VSYNCMODE_PASSIVE;
-static NvU32 s_prevThreadedOpt    = OGL_THREAD_CONTROL_DEFAULT;
-static bool  s_drsSettingsSaved   = false;
+bool g_initialized = false;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Init / shutdown
-// ─────────────────────────────────────────────────────────────────────────────
-bool NvidiaTweaks::initNvAPI() {
-    if (s_initialized) return true;
-
-    NvAPI_Status status = NvAPI_Initialize();
-    if (status != NVAPI_OK) {
-        NvAPI_ShortString err;
-        NvAPI_GetErrorMessage(status, err);
-        printf("[NvidiaTweaks] NvAPI_Initialize failed: %s\n", err);
-        return false;
-    }
-
-    s_initialized = true;
-    printf("[NvidiaTweaks] NVAPI initialized\n");
-    return true;
-}
-
-void NvidiaTweaks::shutdownNvAPI() {
-    if (!s_initialized) return;
-    NvAPI_Unload();
-    s_initialized = false;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DRS helpers
-// ─────────────────────────────────────────────────────────────────────────────
-static bool getDRSSetting(NvDRSSessionHandle hSession,
-                          NvDRSProfileHandle hProfile,
-                          NvU32              settingId,
-                          NvU32&             outValue) {
-    NVDRS_SETTING setting = {};
-    setting.version = NVDRS_SETTING_VER;
-    if (NvAPI_DRS_GetSetting(hSession, hProfile, settingId, &setting) != NVAPI_OK)
-        return false;
-    outValue = setting.u32CurrentValue;
-    return true;
-}
-
-static bool setDRSSetting(NvDRSSessionHandle hSession,
-                          NvDRSProfileHandle hProfile,
-                          NvU32              settingId,
-                          NvU32              value) {
-    NVDRS_SETTING setting = {};
-    setting.version         = NVDRS_SETTING_VER;
-    setting.settingId       = settingId;
-    setting.settingType     = NVDRS_DWORD_TYPE;
-    setting.u32CurrentValue = value;
-
-    NvAPI_Status s = NvAPI_DRS_SetSetting(hSession, hProfile, &setting);
+bool ensureInit() {
+    if (g_initialized) return true;
+    NvAPI_Status s = NvAPI_Initialize();
     if (s != NVAPI_OK) {
         NvAPI_ShortString err;
         NvAPI_GetErrorMessage(s, err);
-        printf("[NvidiaTweaks] Failed to set DRS 0x%X: %s\n", settingId, err);
+        Log("[NvidiaTweaks] NVAPI unavailable (%s): no NVIDIA GPU/driver?", err);
         return false;
     }
+    g_initialized = true;
     return true;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Apply / restore DRS settings
-// ─────────────────────────────────────────────────────────────────────────────
-bool NvidiaTweaks::applyDRSSettings(const Profile& p) {
-    NvDRSSessionHandle hSession = nullptr;
-    if (NvAPI_DRS_CreateSession(&hSession) != NVAPI_OK) {
-        printf("[NvidiaTweaks] Failed to create DRS session\n");
-        return false;
-    }
-    if (NvAPI_DRS_LoadSettings(hSession) != NVAPI_OK) {
-        printf("[NvidiaTweaks] Failed to load DRS settings\n");
-        NvAPI_DRS_DestroySession(hSession);
-        return false;
-    }
-
-    NvDRSProfileHandle hProfile = nullptr;
-    if (NvAPI_DRS_GetBaseProfile(hSession, &hProfile) != NVAPI_OK) {
-        printf("[NvidiaTweaks] Failed to get base profile\n");
-        NvAPI_DRS_DestroySession(hSession);
-        return false;
-    }
-
-    // Snapshot before touching anything
-    if (!s_drsSettingsSaved) {
-        getDRSSetting(hSession, hProfile, PREFERRED_PSTATE_ID,    s_prevPowerPolicy);
-        getDRSSetting(hSession, hProfile, PRERENDERLIMIT_ID,       s_prevPrerenderLimit);
-        getDRSSetting(hSession, hProfile, VSYNCMODE_ID,            s_prevVsync);
-        getDRSSetting(hSession, hProfile, OGL_THREAD_CONTROL_ID,   s_prevThreadedOpt);
-        s_drsSettingsSaved = true;
-        printf("[NvidiaTweaks] DRS snapshot saved\n");
-    }
-
-    bool ok = true;
-
-    // 1. Power policy -> Maximum Performance (never let GPU clock down)
-    if (p.maxPerfMode) {
-        ok &= setDRSSetting(hSession, hProfile,
-                            PREFERRED_PSTATE_ID,
-                            PREFERRED_PSTATE_PREFER_MAX);
-        printf("[NvidiaTweaks] Power policy -> Maximum Performance\n");
-    }
-
-    // 2. Pre-rendered frames -> 1 (minimum CPU-to-GPU queue depth)
-    if (p.disablePrerenderFrames) {
-        ok &= setDRSSetting(hSession, hProfile, PRERENDERLIMIT_ID, 1);
-        printf("[NvidiaTweaks] Pre-rendered frames -> 1\n");
-    }
-
-    // 3. VSync -> Force off
-    if (p.disableVSync) {
-        ok &= setDRSSetting(hSession, hProfile,
-                            VSYNCMODE_ID,
-                            VSYNCMODE_FORCEOFF);
-        printf("[NvidiaTweaks] VSync -> Force off\n");
-    }
-
-    // 5. Threaded optimization -> On
-    if (p.threadedOptimization) {
-        ok &= setDRSSetting(hSession, hProfile,
-                            OGL_THREAD_CONTROL_ID,
-                            OGL_THREAD_CONTROL_ENABLE);
-        printf("[NvidiaTweaks] Threaded optimization -> On\n");
-    }
-
-    // Commit
-    if (NvAPI_DRS_SaveSettings(hSession) != NVAPI_OK) {
-        printf("[NvidiaTweaks] Failed to save DRS settings\n");
-        ok = false;
-    } else {
-        printf("[NvidiaTweaks] DRS settings committed\n");
-    }
-
-    NvAPI_DRS_DestroySession(hSession);
-    return ok;
+std::string errText(NvAPI_Status s) {
+    NvAPI_ShortString err;
+    NvAPI_GetErrorMessage(s, err);
+    return err;
 }
 
-void NvidiaTweaks::restoreDRSSettings() {
-    if (!s_drsSettingsSaved) return;
+// RAII DRS session on the global base profile
+struct Drs {
+    NvDRSSessionHandle session = nullptr;
+    NvDRSProfileHandle profile = nullptr;
+    std::string        error;
 
-    NvDRSSessionHandle hSession = nullptr;
-    if (NvAPI_DRS_CreateSession(&hSession) != NVAPI_OK) return;
-    if (NvAPI_DRS_LoadSettings(hSession) != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
-        return;
+    bool open() {
+        NvAPI_Status s = NvAPI_DRS_CreateSession(&session);
+        if (s != NVAPI_OK) { error = "CreateSession: " + errText(s); return false; }
+        s = NvAPI_DRS_LoadSettings(session);
+        if (s != NVAPI_OK) { error = "LoadSettings: " + errText(s); return false; }
+        s = NvAPI_DRS_GetBaseProfile(session, &profile);
+        if (s != NVAPI_OK) { error = "GetBaseProfile: " + errText(s); return false; }
+        return true;
     }
-
-    NvDRSProfileHandle hProfile = nullptr;
-    if (NvAPI_DRS_GetBaseProfile(hSession, &hProfile) != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
-        return;
+    // existed = explicitly set in the base profile (not just a predefined default)
+    bool get(NvU32 id, bool& existed, NvU32& value) {
+        NVDRS_SETTING st = {};
+        st.version = NVDRS_SETTING_VER;
+        NvAPI_Status s = NvAPI_DRS_GetSetting(session, profile, id, &st);
+        if (s == NVAPI_SETTING_NOT_FOUND) { existed = false; value = 0; return true; }
+        if (s != NVAPI_OK) { error = "GetSetting: " + errText(s); return false; }
+        existed = !st.isCurrentPredefined;
+        value   = st.u32CurrentValue;
+        return true;
     }
+    bool set(NvU32 id, NvU32 value) {
+        NVDRS_SETTING st = {};
+        st.version         = NVDRS_SETTING_VER;
+        st.settingId       = id;
+        st.settingType     = NVDRS_DWORD_TYPE;
+        st.u32CurrentValue = value;
+        NvAPI_Status s = NvAPI_DRS_SetSetting(session, profile, &st);
+        if (s != NVAPI_OK) { error = "SetSetting: " + errText(s); return false; }
+        return true;
+    }
+    bool remove(NvU32 id) {
+        NvAPI_Status s = NvAPI_DRS_DeleteProfileSetting(session, profile, id);
+        if (s == NVAPI_OK || s == NVAPI_SETTING_NOT_FOUND) return true;
+        // Settings with a predefined value cannot be deleted; reset them instead.
+        s = NvAPI_DRS_RestoreProfileDefaultSetting(session, profile, id);
+        if (s == NVAPI_OK || s == NVAPI_SETTING_NOT_FOUND) return true;
+        error = "Delete/RestoreDefault: " + errText(s);
+        return false;
+    }
+    bool save() {
+        NvAPI_Status s = NvAPI_DRS_SaveSettings(session);
+        if (s != NVAPI_OK) { error = "SaveSettings: " + errText(s); return false; }
+        return true;
+    }
+    ~Drs() { if (session) NvAPI_DRS_DestroySession(session); }
+};
 
-    setDRSSetting(hSession, hProfile, PREFERRED_PSTATE_ID,  s_prevPowerPolicy);
-    setDRSSetting(hSession, hProfile, PRERENDERLIMIT_ID,     s_prevPrerenderLimit);
-    setDRSSetting(hSession, hProfile, VSYNCMODE_ID,          s_prevVsync);
-    setDRSSetting(hSession, hProfile, OGL_THREAD_CONTROL_ID, s_prevThreadedOpt);
+struct Target { const char* flagName; bool Profile::*flag; NvU32 id; NvU32 value; const char* label; };
 
-    NvAPI_DRS_SaveSettings(hSession);
-    NvAPI_DRS_DestroySession(hSession);
+const Target kTargets[] = {
+    { "maxPerfMode",            &Profile::maxPerfMode,            PREFERRED_PSTATE_ID,
+      PREFERRED_PSTATE_PREFER_MAX,  "Power management -> Prefer maximum performance" },
+    { "disablePrerenderFrames", &Profile::disablePrerenderFrames, PRERENDERLIMIT_ID,
+      1,                            "Max pre-rendered frames -> 1 (Low Latency: On)" },
+    { "disableVSync",           &Profile::disableVSync,           VSYNCMODE_ID,
+      VSYNCMODE_FORCEOFF,           "Vertical sync -> Force off" },
+    { "threadedOptimization",   &Profile::threadedOptimization,   OGL_THREAD_CONTROL_ID,
+      OGL_THREAD_CONTROL_ENABLE,    "Threaded optimization -> On" },
+};
 
-    s_drsSettingsSaved = false;
-    printf("[NvidiaTweaks] DRS settings restored\n");
+bool isKnownId(NvU32 id) {
+    for (const auto& t : kTargets) if (t.id == id) return true;
+    return false;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Log GPU info
-// ─────────────────────────────────────────────────────────────────────────────
-static void logGPUInfo() {
+void logGpus() {
     NvPhysicalGpuHandle gpus[NVAPI_MAX_PHYSICAL_GPUS] = {};
-    NvU32 gpuCount = 0;
-    if (NvAPI_EnumPhysicalGPUs(gpus, &gpuCount) != NVAPI_OK) return;
-
-    for (NvU32 i = 0; i < gpuCount; i++) {
+    NvU32 n = 0;
+    if (NvAPI_EnumPhysicalGPUs(gpus, &n) != NVAPI_OK) return;
+    for (NvU32 i = 0; i < n; ++i) {
         NvAPI_ShortString name = {};
         NvAPI_GPU_GetFullName(gpus[i], name);
-        printf("[NvidiaTweaks] GPU[%u]: %s\n", i, name);
+        Log("[NvidiaTweaks] GPU[%u]: %s", i, name);
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// APPLY
-// ─────────────────────────────────────────────────────────────────────────────
-bool NvidiaTweaks::apply(const Profile& p) {
-    printf("[NvidiaTweaks] Applying tweaks...\n");
+} // namespace
 
-    if (!initNvAPI()) return false;
+void NvidiaTweaks::apply(const Profile& p) {
+    Log("[NvidiaTweaks] Applying...");
+    if (!ensureInit()) return;
+    logGpus();
 
-    logGPUInfo();
-    applyDRSSettings(p);
+    Drs drs;
+    if (!drs.open()) { Log("[NvidiaTweaks] %s", drs.error.c_str()); return; }
 
-    printf("[NvidiaTweaks] Done.\n");
+    int changed = 0;
+    for (const auto& t : kTargets) {
+        if (!(p.*t.flag)) continue;
+        bool existed = false;
+        NvU32 cur = 0;
+        if (!drs.get(t.id, existed, cur)) { Log("[NvidiaTweaks] %s", drs.error.c_str()); continue; }
+        if (existed && cur == t.value) { Log("[NvidiaTweaks] %s (already set)", t.label); continue; }
+
+        Snapshot::Entry e = { { "kind", "drs" }, { "settingId", t.id }, { "existed", existed } };
+        if (existed) e["value"] = cur;
+        if (!Snapshot::record(e)) {
+            Log("[NvidiaTweaks] snapshot write failed; %s not changed", t.flagName);
+            continue;
+        }
+        if (drs.set(t.id, t.value)) { Log("[NvidiaTweaks] %s", t.label); ++changed; }
+        else Log("[NvidiaTweaks] %s: %s", t.flagName, drs.error.c_str());
+    }
+    if (changed && !drs.save()) Log("[NvidiaTweaks] %s", drs.error.c_str());
+    Log("[NvidiaTweaks] Done (%d setting(s) changed).", changed);
+}
+
+void NvidiaTweaks::releaseRuntime() {
+    if (!g_initialized) return;
+    NvAPI_Unload();
+    g_initialized = false;
+}
+
+bool NvidiaTweaks::ownsKind(const std::string& k) { return k == "drs"; }
+
+bool NvidiaTweaks::restoreEntry(const Snapshot::Entry& e, std::string& error) {
+    NvU32 id = e.value("settingId", 0u);
+    if (!isKnownId(id)) { error = "unexpected DRS setting id"; return false; }
+    if (!ensureInit())  { error = "NVAPI unavailable"; return false; }
+
+    Drs drs;
+    bool ok = drs.open();
+    if (ok) {
+        ok = e.value("existed", false) ? drs.set(id, e.value("value", 0u)) : drs.remove(id);
+        if (ok) ok = drs.save();
+    }
+    if (!ok) { error = drs.error; return false; }
+    Log("[NvidiaTweaks] DRS 0x%08X restored", id);
     return true;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RESTORE
-// ─────────────────────────────────────────────────────────────────────────────
-void NvidiaTweaks::restore() {
-    printf("[NvidiaTweaks] Restoring...\n");
-    restoreDRSSettings();
-    shutdownNvAPI();
-    printf("[NvidiaTweaks] Restored.\n");
+void NvidiaTweaks::dump() {
+    if (!ensureInit()) return;
+    Drs drs;
+    if (!drs.open()) { Log("drs.error = %s", drs.error.c_str()); return; }
+    for (const auto& t : kTargets) {
+        bool existed = false;
+        NvU32 v = 0;
+        if (drs.get(t.id, existed, v))
+            Log("drs.0x%08X = %s%u", t.id, existed ? "" : "default:", v);
+    }
 }
 
 } // namespace PeakMode
