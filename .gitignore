@@ -64,3 +64,6 @@ desktop.ini
 .vscode/
 .idea/
 *.code-workspace
+
+# Local test output
+test-results/
