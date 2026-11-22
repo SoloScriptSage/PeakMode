@@ -48,8 +48,12 @@ bld/
 .nuget/
 packages/
 
-# NVAPI SDK (download separately — don't commit)
-core/third_party/nvapi/
+# NVAPI SDK: only headers + amd64 import lib are vendored (MIT, see License.txt)
+!core/third_party/nvapi/amd64/
+!core/third_party/nvapi/amd64/nvapi64.lib
+
+# Release packaging
+dist/
 
 # OS
 .DS_Store
