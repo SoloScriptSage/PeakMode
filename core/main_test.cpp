@@ -1,5 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <aclapi.h>
+#include <sddl.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -144,6 +146,63 @@ static void testSnapshot() {
     RemoveDirectoryW(dir.c_str());
 }
 
+static bool isElevated();
+
+static bool setDacl(const std::wstring& path, const wchar_t* sddl) {
+    PSECURITY_DESCRIPTOR sd = nullptr;
+    if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &sd, nullptr))
+        return false;
+    BOOL present = FALSE, def = FALSE;
+    PACL dacl = nullptr;
+    GetSecurityDescriptorDacl(sd, &present, &dacl, &def);
+    DWORD r = SetNamedSecurityInfoW(const_cast<wchar_t*>(path.c_str()), SE_FILE_OBJECT,
+                                    DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+                                    nullptr, nullptr, dacl, nullptr);
+    LocalFree(sd);
+    return r == ERROR_SUCCESS;
+}
+
+// The real state dir must end up Administrators/SYSTEM-only, both when
+// freshly created and when it already exists with a wrong ACL.
+static void testStateDirAcl() {
+    using PeakMode::Snapshot;
+    printf("[selftest] state dir ACL\n");
+    if (!isElevated()) {
+        printf("  skipped: needs an elevated prompt (CI runners are elevated)\n");
+        return;
+    }
+    wchar_t tmp[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp);
+    std::wstring dir  = std::wstring(tmp) + L"peakmode-acltest-" +
+                        std::to_wstring(GetCurrentProcessId());
+    std::wstring file = dir + L"\\snapshot.json";
+    CreateDirectoryW(dir.c_str(), nullptr);               // inherits %TEMP% ACL
+    HANDLE h = CreateFileW(file.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+    CHECK(h != INVALID_HANDLE_VALUE);
+    if (h != INVALID_HANDLE_VALUE) CloseHandle(h);
+
+    // 1. Inherited, user-writable ACL is detected and repaired
+    CHECK(!Snapshot::isAdminOnly(dir, true));
+    std::string err;
+    CHECK(Snapshot::secureStateDir(dir, err));
+    if (!err.empty()) printf("  error: %s\n", err.c_str());
+    CHECK(Snapshot::isAdminOnly(dir, true));
+    CHECK(Snapshot::isAdminOnly(file, false));
+
+    // 2. One extra ACE (Users read, the previous design) is not accepted
+    CHECK(setDacl(dir, L"D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;GRGX;;;BU)"));
+    CHECK(!Snapshot::isAdminOnly(dir, true));
+    // 3. A file with its own explicit loose ACL (Everyone) is repaired too
+    CHECK(setDacl(file, L"D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)"));
+    CHECK(!Snapshot::isAdminOnly(file, false));
+    CHECK(Snapshot::secureStateDir(dir, err));
+    CHECK(Snapshot::isAdminOnly(dir, true));
+    CHECK(Snapshot::isAdminOnly(file, false));
+
+    DeleteFileW(file.c_str());
+    RemoveDirectoryW(dir.c_str());
+}
+
 static void testRegistryAllowlist() {
     using PeakMode::Registry::IsAllowedPath;
     printf("[selftest] registry allowlist\n");
@@ -163,6 +222,7 @@ static int runSelftest(const char* configPath) {
     testProfileParsing();
     testShippedConfig(configPath);
     testSnapshot();
+    testStateDirAcl();
     testRegistryAllowlist();
     printf(g_failures ? "[selftest] %d FAILURE(S)\n" : "[selftest] all passed\n", g_failures);
     return g_failures ? 1 : 0;

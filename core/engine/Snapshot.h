@@ -30,10 +30,19 @@ public:
         std::vector<std::string> errors;
     };
 
-    // %ProgramData%\PeakMode, created with an admin-only-writable ACL and
-    // required to be owned by Administrators or SYSTEM. Empty on failure.
+    // %ProgramData%\PeakMode: Administrators/SYSTEM-only ACL (created that way,
+    // repaired on first use if not), must be owned by Administrators or
+    // SYSTEM. Empty on failure.
     static std::wstring stateDir();
     static std::string  stateDirError();
+
+    // True if `path` has a protected DACL with exactly two explicit
+    // full-control ACEs: SYSTEM and Administrators (inheritable for a dir).
+    static bool isAdminOnly(const std::wstring& path, bool isDirectory);
+
+    // Apply that ACL to `dir` and every file in it, then verify.
+    // Called on startup for %ProgramData%\PeakMode (repairs a wrong ACL).
+    static bool secureStateDir(const std::wstring& dir, std::string& error);
     static std::wstring filePath();
 
     static bool exists();
