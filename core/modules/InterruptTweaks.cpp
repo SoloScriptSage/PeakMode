@@ -74,11 +74,15 @@ bool driverAccepts(const std::wstring& driverKey, const wchar_t* keyword, const 
     }
     if (_wcsicmp(type.c_str(), L"int") == 0 || _wcsicmp(type.c_str(), L"long") == 0 ||
         _wcsicmp(type.c_str(), L"dword") == 0 || _wcsicmp(type.c_str(), L"word") == 0) {
-        std::wstring mn, mx;
+        std::wstring mn, mx, st;
         if (!readString(k.h, nullptr, L"min", mn) || !readString(k.h, nullptr, L"max", mx))
             return false;
-        long v = wcstol(value, nullptr, 10);
-        return v >= wcstol(mn.c_str(), nullptr, 10) && v <= wcstol(mx.c_str(), nullptr, 10);
+        long v    = wcstol(value, nullptr, 10);
+        long lo   = wcstol(mn.c_str(), nullptr, 10);
+        long hi   = wcstol(mx.c_str(), nullptr, 10);
+        long step = readString(k.h, nullptr, L"step", st) ? wcstol(st.c_str(), nullptr, 10) : 1;
+        if (step <= 0) step = 1;
+        return v >= lo && v <= hi && (v - lo) % step == 0;
     }
     return false;
 }
