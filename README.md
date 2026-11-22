@@ -41,6 +41,7 @@ Adapter settings only take effect after the adapter restarts, so with `interrupt
 1. Download `PeakMode-<version>-win-x64.zip` from the [releases](../../releases) and extract it anywhere.
 2. Optionally edit `config\peakmode.json` (for example set `windows.targetProcess` to your game's exe name).
 3. Run `PeakModeTray.exe` and accept the administrator prompt. The icon appears in the tray (grey = idle).
+   The exe is not code-signed, so on first start Windows SmartScreen may show "Windows protected your PC". Click **More info**, then **Run anyway**.
 4. Left-click the icon to activate (icon turns colored), left-click again to restore. Right-click for the menu: open config, open log, exit.
 
 The release is self-contained: no .NET runtime needs to be installed. Exiting the tray while active restores everything first.
