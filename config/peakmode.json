@@ -2,7 +2,7 @@
   "name": "default",
   "windowsTweaks": true,
   "nvidiaTweaks": true,
-  "interruptTweaks": true,
+  "interruptTweaks": false,
 
   "windows": {
     "targetProcess": "",
