@@ -268,7 +268,8 @@ void InterruptTweaks::apply(const Profile& p) {
         setAdapterProperties(true);
 
     // Restart NIC to apply adapter property changes immediately
-    restartNicDriver();
+    if (p.redirectNicIrq || p.disableNicInterruptMod)
+        restartNicDriver();
 
     printf("[InterruptTweaks] Done.\n");
 }
@@ -276,12 +277,15 @@ void InterruptTweaks::apply(const Profile& p) {
 // ─────────────────────────────────────────────────────────────────────────────
 // RESTORE
 // ─────────────────────────────────────────────────────────────────────────────
-void InterruptTweaks::restore() {
+void InterruptTweaks::restore(const Profile& p) {
     printf("[InterruptTweaks] Restoring...\n");
 
-    setNicIrqAffinity(false);
-    setAdapterProperties(false);
-    restartNicDriver();
+    if (p.redirectNicIrq)
+        setNicIrqAffinity(false);
+    if (p.disableNicInterruptMod)
+        setAdapterProperties(false);
+    if (p.redirectNicIrq || p.disableNicInterruptMod)
+        restartNicDriver();
 
     printf("[InterruptTweaks] Restored.\n");
 }

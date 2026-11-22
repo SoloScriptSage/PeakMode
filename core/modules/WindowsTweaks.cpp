@@ -246,36 +246,43 @@ void WindowsTweaks::apply(const Profile& p) {
 // ─────────────────────────────────────────────────────────────────────────────
 // RESTORE
 // ─────────────────────────────────────────────────────────────────────────────
-void WindowsTweaks::restore() {
+void WindowsTweaks::restore(const Profile& p) {
     printf("[WindowsTweaks] Restoring...\n");
 
     // Restore process priority
-    SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
-    printf("[WindowsTweaks] Process priority -> NORMAL\n");
+    if (p.setProcPriorityHigh) {
+        SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+        printf("[WindowsTweaks] Process priority -> NORMAL\n");
+    }
 
     // Restore CPU affinity (all 16 threads)
-    SYSTEM_INFO si;
-    GetSystemInfo(&si);
-    DWORD_PTR fullMask = (static_cast<DWORD_PTR>(1) << si.dwNumberOfProcessors) - 1;
-    SetProcessAffinityMask(GetCurrentProcess(), fullMask);
-    printf("[WindowsTweaks] CPU affinity restored (all cores)\n");
+    if (p.pinToPCores) {
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        DWORD_PTR fullMask = (static_cast<DWORD_PTR>(1) << si.dwNumberOfProcessors) - 1;
+        SetProcessAffinityMask(GetCurrentProcess(), fullMask);
+        printf("[WindowsTweaks] CPU affinity restored (all cores)\n");
+    }
 
-    // Restore timer resolution
+    // Restore timer resolution (no-op unless it was changed)
     setTimerResolution(false);
 
     // Restore power plan
-    if (s_hadPrevPlan) {
+    if (p.setUltimatePerf && s_hadPrevPlan) {
         activatePowerPlan(s_prevPowerPlan);
-        s_hadPrevPlan = false;
         printf("[WindowsTweaks] Power plan restored\n");
     }
+    s_hadPrevPlan = false;
 
     // Re-enable Nagle
-    setNagle(true);
+    if (p.disableNagle)
+        setNagle(true);
 
     // Restart services
-    setServiceState(L"SysMain", true);
-    setServiceState(L"WSearch", true);
+    if (p.disableSysMain)
+        setServiceState(L"SysMain", true);
+    if (p.disableSearchIndex)
+        setServiceState(L"WSearch", true);
 
     printf("[WindowsTweaks] Restored.\n");
 }

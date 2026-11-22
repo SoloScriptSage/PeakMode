@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(NVAPI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/nvapi)
 
+if (MSVC)
+    add_compile_options(/utf-8 /permissive-)
+    add_compile_definitions(UNICODE _UNICODE NOMINMAX)
+endif()
+
 # ── Core DLL ──────────────────────────────────────────────────────────────────
 add_library(PeakModeCore SHARED
     engine/ProfileManager.cpp

@@ -16,7 +16,16 @@ Orchestrator& Orchestrator::instance() {
 void Orchestrator::activate(const std::string& profilePath) {
     if (m_state == ProfileState::ACTIVE) return;
 
-    auto profile = ProfileManager::load(profilePath);
+    auto loaded = ProfileManager::load(profilePath);
+    for (const auto& w : loaded.warnings)
+        printf("[Config] warning: %s\n", w.c_str());
+    if (!loaded.ok) {
+        printf("[Config] error: %s\n", loaded.error.c_str());
+        printf("[Orchestrator] Not activating: fix the config first.\n");
+        return;
+    }
+    const Profile& profile = loaded.profile;
+    m_applied = profile;
     Snapshot::capture();
 
     if (profile.windowsTweaks)   WindowsTweaks::apply(profile);
@@ -29,9 +38,9 @@ void Orchestrator::activate(const std::string& profilePath) {
 void Orchestrator::restore() {
     if (m_state == ProfileState::IDLE) return;
 
-    InterruptTweaks::restore();
-    NvidiaTweaks::restore();
-    WindowsTweaks::restore();
+    if (m_applied.interruptTweaks) InterruptTweaks::restore(m_applied);
+    if (m_applied.nvidiaTweaks)    NvidiaTweaks::restore();
+    if (m_applied.windowsTweaks)   WindowsTweaks::restore(m_applied);
 
     Snapshot::clear();
     m_state = ProfileState::IDLE;

@@ -8,7 +8,7 @@ namespace PeakMode {
 class InterruptTweaks {
 public:
     static void apply(const Profile& profile);
-    static void restore();
+    static void restore(const Profile& applied);
 };
 
 } // namespace PeakMode

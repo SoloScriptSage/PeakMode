@@ -8,14 +8,7 @@
 #include "NvidiaTweaks.h"
 #include "../engine/ProfileManager.h"
 
-#pragma comment(lib, "../third_party/nvapi/amd64/nvapi64.lib")
-
-// LOW_LATENCY_MODE is not in this SDK version — use raw setting ID
-// 0x0000108B = Ultra Low Latency (confirmed NVIDIA DRS setting ID)
-#define ULTRA_LOW_LATENCY_ID    0x0000108B
-#define ULTRA_LOW_LATENCY_OFF   0x00000000
-#define ULTRA_LOW_LATENCY_ON    0x00000001
-#define ULTRA_LOW_LATENCY_ULTRA 0x00000002
+// nvapi64.lib is linked by CMake (absolute path), not via #pragma comment
 
 namespace PeakMode {
 
@@ -25,7 +18,6 @@ bool NvidiaTweaks::s_initialized = false;
 static NvU32 s_prevPowerPolicy    = PREFERRED_PSTATE_ADAPTIVE;
 static NvU32 s_prevPrerenderLimit = 3;
 static NvU32 s_prevVsync          = VSYNCMODE_PASSIVE;
-static NvU32 s_prevLowLatency     = ULTRA_LOW_LATENCY_OFF;
 static NvU32 s_prevThreadedOpt    = OGL_THREAD_CONTROL_DEFAULT;
 static bool  s_drsSettingsSaved   = false;
 
@@ -116,7 +108,6 @@ bool NvidiaTweaks::applyDRSSettings(const Profile& p) {
         getDRSSetting(hSession, hProfile, PREFERRED_PSTATE_ID,    s_prevPowerPolicy);
         getDRSSetting(hSession, hProfile, PRERENDERLIMIT_ID,       s_prevPrerenderLimit);
         getDRSSetting(hSession, hProfile, VSYNCMODE_ID,            s_prevVsync);
-        getDRSSetting(hSession, hProfile, ULTRA_LOW_LATENCY_ID,    s_prevLowLatency);
         getDRSSetting(hSession, hProfile, OGL_THREAD_CONTROL_ID,   s_prevThreadedOpt);
         s_drsSettingsSaved = true;
         printf("[NvidiaTweaks] DRS snapshot saved\n");
@@ -146,19 +137,13 @@ bool NvidiaTweaks::applyDRSSettings(const Profile& p) {
         printf("[NvidiaTweaks] VSync -> Force off\n");
     }
 
-    // 4. Ultra Low Latency -> Ultra (reduces render queue, cuts input lag)
-    if (p.enableLowLatency) {
-        ok &= setDRSSetting(hSession, hProfile,
-                            ULTRA_LOW_LATENCY_ID,
-                            ULTRA_LOW_LATENCY_ULTRA);
-        printf("[NvidiaTweaks] Ultra Low Latency -> Ultra\n");
-    }
-
     // 5. Threaded optimization -> On
-    ok &= setDRSSetting(hSession, hProfile,
-                        OGL_THREAD_CONTROL_ID,
-                        OGL_THREAD_CONTROL_ENABLE);
-    printf("[NvidiaTweaks] Threaded optimization -> On\n");
+    if (p.threadedOptimization) {
+        ok &= setDRSSetting(hSession, hProfile,
+                            OGL_THREAD_CONTROL_ID,
+                            OGL_THREAD_CONTROL_ENABLE);
+        printf("[NvidiaTweaks] Threaded optimization -> On\n");
+    }
 
     // Commit
     if (NvAPI_DRS_SaveSettings(hSession) != NVAPI_OK) {
@@ -191,7 +176,6 @@ void NvidiaTweaks::restoreDRSSettings() {
     setDRSSetting(hSession, hProfile, PREFERRED_PSTATE_ID,  s_prevPowerPolicy);
     setDRSSetting(hSession, hProfile, PRERENDERLIMIT_ID,     s_prevPrerenderLimit);
     setDRSSetting(hSession, hProfile, VSYNCMODE_ID,          s_prevVsync);
-    setDRSSetting(hSession, hProfile, ULTRA_LOW_LATENCY_ID,  s_prevLowLatency);
     setDRSSetting(hSession, hProfile, OGL_THREAD_CONTROL_ID, s_prevThreadedOpt);
 
     NvAPI_DRS_SaveSettings(hSession);

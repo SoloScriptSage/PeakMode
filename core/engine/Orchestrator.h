@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "ProfileManager.h"
 
 namespace PeakMode {
 
@@ -16,6 +17,7 @@ public:
 private:
     Orchestrator() = default;
     ProfileState m_state = ProfileState::IDLE;
+    Profile      m_applied;   // flags used for the current activation
 };
 
 } // namespace PeakMode

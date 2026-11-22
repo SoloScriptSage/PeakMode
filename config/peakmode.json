@@ -5,6 +5,7 @@
   "interruptTweaks": true,
 
   "windows": {
+    "targetProcess": "",
     "setProcPriorityHigh": true,
     "pinToPCores": true,
     "setUltimatePerf": true,
@@ -18,12 +19,12 @@
     "maxPerfMode": true,
     "disableVSync": true,
     "disablePrerenderFrames": true,
-    "enableLowLatency": true
+    "threadedOptimization": true
   },
 
   "interrupt": {
+    "nicInstanceId": "",
     "redirectNicIrq": true,
-    "disableNicInterruptMod": true,
-    "disableHpet": false
+    "disableNicInterruptMod": true
   }
 }
