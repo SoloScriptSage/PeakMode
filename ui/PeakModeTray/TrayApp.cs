@@ -1,160 +1,233 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace PeakModeTray
 {
     internal class TrayApp : ApplicationContext
     {
-        private readonly NotifyIcon _trayIcon;
+        private readonly NotifyIcon        _trayIcon;
         private readonly ToolStripMenuItem _toggleItem;
         private readonly ToolStripMenuItem _statusItem;
+        private readonly Icon              _iconActive;
+        private readonly Icon              _iconIdle;
+        private readonly IntPtr            _core;
+        private readonly string?           _configPath;
 
-        private bool _isActive = false;
-
-        // exe lives at: ui/PeakModeTray/bin/Release/net8.0-windows/
-        // config lives at: config/peakmode.json (5 levels up)
-        private static readonly string ConfigPath = Path.GetFullPath(Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "..", "..", "..", "..", "..",
-            "config", "peakmode.json"));
+        private static readonly string StateDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PeakMode");
 
         public TrayApp()
         {
+            _core       = PeakModeCore.Orchestrator_GetInstance();
+            _configPath = FindConfig();
+
+            (_iconActive, _iconIdle) = LoadIcons();
+
             _statusItem = new ToolStripMenuItem("Status: IDLE")
             {
                 Enabled = false,
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+                Font    = new Font("Segoe UI", 9f, FontStyle.Bold)
             };
-
             _toggleItem = new ToolStripMenuItem("Activate", null, OnToggle);
-
-            var exitItem = new ToolStripMenuItem("Exit", null, OnExit);
 
             var menu = new ContextMenuStrip();
             menu.Items.Add(_statusItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(_toggleItem);
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add(exitItem);
+            menu.Items.Add(new ToolStripMenuItem("Open config", null, (_, _) => OpenPath(_configPath)));
+            menu.Items.Add(new ToolStripMenuItem("Open log", null,
+                (_, _) => OpenPath(Path.Combine(StateDir, "peakmode.log"))));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(new ToolStripMenuItem("Exit", null, OnExit));
 
             _trayIcon = new NotifyIcon
             {
-                Icon             = CreateIcon(active: false),
-                Text             = "PeakMode — IDLE",
+                Icon             = _iconIdle,
+                Text             = "PeakMode: IDLE",
                 ContextMenuStrip = menu,
                 Visible          = true
             };
-
             _trayIcon.MouseClick += (s, e) =>
             {
-                if (e.Button == MouseButtons.Left)
-                    OnToggle(s, e);
+                if (e.Button == MouseButtons.Left) OnToggle(s, e);
             };
+
+            // Restore on logoff/shutdown. If Windows kills us first, the
+            // snapshot on disk is offered for restore on next start.
+            SystemEvents.SessionEnding += OnSessionEnding;
+
+            UpdateUI();
+            OfferLeftoverRestore();
+        }
+
+        // ── state ────────────────────────────────────────────────────────────
+        private int State => PeakModeCore.Orchestrator_GetState(_core);
+
+        private void OfferLeftoverRestore()
+        {
+            if (State != PeakModeCore.StateRestorePending) return;
+            var answer = MessageBox.Show(
+                "PeakMode was still active when it last closed (crash, kill or reboot), " +
+                "so some system settings may still be tweaked.\n\n" +
+                "Restore your original settings now?",
+                "PeakMode", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (answer == DialogResult.Yes) Restore();
         }
 
         private void OnToggle(object? sender, EventArgs e)
         {
             try
             {
-                if (!_isActive) Activate();
-                else            Restore();
+                if (State == PeakModeCore.StateIdle) Activate();
+                else                                 Restore();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    $"PeakMode error:\n\n{ex.Message}\n\nMake sure PeakModeCore.dll is next to the .exe and you're running as Administrator.",
-                    "PeakMode", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowError($"Unexpected error:\n\n{ex.Message}");
             }
         }
 
         private void Activate()
         {
-            if (!File.Exists(ConfigPath))
+            if (_configPath == null)
             {
-                MessageBox.Show($"Config not found:\n{ConfigPath}", "PeakMode",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowError("Config not found. Expected config\\peakmode.json next to PeakModeTray.exe.");
                 return;
             }
-
-            var inst = PeakModeCore.Orchestrator_GetInstance();
-            PeakModeCore.Orchestrator_Activate(inst, ConfigPath);
-
-            _isActive = true;
+            Cursor.Current = Cursors.WaitCursor;
+            int rc = PeakModeCore.Orchestrator_Activate(_core, _configPath);
+            Cursor.Current = Cursors.Default;
             UpdateUI();
 
-            _trayIcon.ShowBalloonTip(2000, "PeakMode",
-                "Gaming mode activated", ToolTipIcon.Info);
+            if (rc == PeakModeCore.OK)
+                _trayIcon.ShowBalloonTip(2000, "PeakMode", "Gaming mode activated", ToolTipIcon.Info);
+            else
+                ShowError(PeakModeCore.LastError());
         }
 
         private void Restore()
         {
-            var inst = PeakModeCore.Orchestrator_GetInstance();
-            PeakModeCore.Orchestrator_Restore(inst);
-
-            _isActive = false;
+            Cursor.Current = Cursors.WaitCursor;
+            int rc = PeakModeCore.Orchestrator_Restore(_core);
+            Cursor.Current = Cursors.Default;
             UpdateUI();
 
-            _trayIcon.ShowBalloonTip(2000, "PeakMode",
-                "System restored to defaults", ToolTipIcon.Info);
+            if (rc == PeakModeCore.OK || rc == PeakModeCore.ErrNothing)
+                _trayIcon.ShowBalloonTip(2000, "PeakMode", "Original settings restored", ToolTipIcon.Info);
+            else
+                ShowError(PeakModeCore.LastError() +
+                          "\n\nDetails are in the log (tray menu > Open log).");
         }
 
         private void UpdateUI()
         {
-            if (_isActive)
+            switch (State)
             {
-                _trayIcon.Icon   = CreateIcon(active: true);
-                _trayIcon.Text   = "PeakMode — ACTIVE";
-                _statusItem.Text = "Status: ACTIVE";
-                _toggleItem.Text = "Restore";
-            }
-            else
-            {
-                _trayIcon.Icon   = CreateIcon(active: false);
-                _trayIcon.Text   = "PeakMode — IDLE";
-                _statusItem.Text = "Status: IDLE";
-                _toggleItem.Text = "Activate";
+                case PeakModeCore.StateActive:
+                    _trayIcon.Icon   = _iconActive;
+                    _trayIcon.Text   = "PeakMode: ACTIVE";
+                    _statusItem.Text = "Status: ACTIVE";
+                    _toggleItem.Text = "Restore";
+                    break;
+                case PeakModeCore.StateRestorePending:
+                    _trayIcon.Icon   = _iconActive;
+                    _trayIcon.Text   = "PeakMode: restore pending";
+                    _statusItem.Text = "Status: RESTORE PENDING";
+                    _toggleItem.Text = "Restore settings from last session";
+                    break;
+                default:
+                    _trayIcon.Icon   = _iconIdle;
+                    _trayIcon.Text   = "PeakMode: IDLE";
+                    _statusItem.Text = "Status: IDLE";
+                    _toggleItem.Text = "Activate";
+                    break;
             }
         }
 
-        private static Icon CreateIcon(bool active)
+        private void OnSessionEnding(object? sender, SessionEndingEventArgs e)
         {
-            using var bmp = new Bitmap(16, 16);
-            using var g   = Graphics.FromImage(bmp);
-            g.Clear(Color.Transparent);
-
-            Color fill   = active ? Color.FromArgb(0, 200, 80)  : Color.FromArgb(120, 120, 120);
-            Color border = active ? Color.FromArgb(0, 140, 50)  : Color.FromArgb(80, 80, 80);
-
-            using var brush = new SolidBrush(fill);
-            using var pen   = new Pen(border, 1.5f);
-
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            g.FillEllipse(brush, 2, 2, 11, 11);
-            g.DrawEllipse(pen,   2, 2, 11, 11);
-
-            if (active)
+            if (State == PeakModeCore.StateActive)
             {
-                using var boltBrush = new SolidBrush(Color.White);
-                g.FillPolygon(boltBrush, new Point[]
-                {
-                    new(8, 3), new(5, 8), new(7, 8), new(6, 13), new(10, 7), new(8, 7)
-                });
+                try { PeakModeCore.Orchestrator_Restore(_core); } catch { }
             }
-
-            return Icon.FromHandle(bmp.GetHicon());
         }
 
         private void OnExit(object? sender, EventArgs e)
         {
-            if (_isActive)
+            if (State == PeakModeCore.StateActive)
             {
                 try { Restore(); } catch { }
             }
+            SystemEvents.SessionEnding -= OnSessionEnding;
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
-            Application.Exit();
+            Application.Exit(); // returns from Application.Run in App.OnStartup
         }
+
+        // ── helpers ──────────────────────────────────────────────────────────
+        private void ShowError(string message) =>
+            MessageBox.Show(message, "PeakMode", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+        private static void OpenPath(string? path)
+        {
+            if (path == null || !File.Exists(path)) return;
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+
+        // Release layout: <exe dir>\config\peakmode.json
+        // Dev layout: walk up from bin\Release\net8.0-windows\... to the repo's config\
+        private static string? FindConfig()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            for (int i = 0; i < 7 && dir != null; i++, dir = dir.Parent)
+            {
+                var candidate = Path.Combine(dir.FullName, "config", "peakmode.json");
+                if (File.Exists(candidate)) return candidate;
+            }
+            return null;
+        }
+
+        private static (Icon active, Icon idle) LoadIcons()
+        {
+            var size = SystemInformation.SmallIconSize;
+            using var stream = Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream("PeakModeTray.peakmode.ico")
+                ?? throw new InvalidOperationException("embedded icon missing");
+            var active = new Icon(stream, size);
+
+            // Idle: same artwork, desaturated and dimmed
+            using var color = active.ToBitmap();
+            using var gray  = new Bitmap(color.Width, color.Height, PixelFormat.Format32bppArgb);
+            var matrix = new ColorMatrix(new[]
+            {
+                new[] { 0.30f, 0.30f, 0.30f, 0f, 0f },
+                new[] { 0.59f, 0.59f, 0.59f, 0f, 0f },
+                new[] { 0.11f, 0.11f, 0.11f, 0f, 0f },
+                new[] { 0f,    0f,    0f,    0.75f, 0f },
+                new[] { 0f,    0f,    0f,    0f, 1f },
+            });
+            using (var g = Graphics.FromImage(gray))
+            using (var attrs = new ImageAttributes())
+            {
+                attrs.SetColorMatrix(matrix);
+                g.DrawImage(color, new Rectangle(0, 0, color.Width, color.Height),
+                            0, 0, color.Width, color.Height, GraphicsUnit.Pixel, attrs);
+            }
+            IntPtr hIcon = gray.GetHicon();
+            var idle = (Icon)Icon.FromHandle(hIcon).Clone();
+            DestroyIcon(hIcon);
+            return (active, idle);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool DestroyIcon(IntPtr hIcon);
     }
 }

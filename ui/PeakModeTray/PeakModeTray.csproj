@@ -8,17 +8,38 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\peakmode.ico</ApplicationIcon>
     <AssemblyName>PeakModeTray</AssemblyName>
     <RootNamespace>PeakModeTray</RootNamespace>
-    <!-- Copy PeakModeCore.dll to output automatically -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>0.1.0</Version>
+    <Product>PeakMode</Product>
+    <Copyright>Copyright (c) 2026 SoloScriptSage. MIT License.</Copyright>
+
+    <!-- Release packaging: self-contained single exe for win-x64. The native
+         PeakModeCore.dll and config stay as loose files next to it. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+
+    <!-- Where the CMake build put the core DLL (override with -p:CoreDllPath=...) -->
+    <CoreDllPath Condition="'$(CoreDllPath)' == ''">..\..\core\build\Release\PeakModeCore.dll</CoreDllPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Copy the C++ DLL next to the exe on build -->
-    <None Include="..\..\core\build\Release\PeakModeCore.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="Exists('..\..\core\build\Release\PeakModeCore.dll')" />
+    <EmbeddedResource Include="..\..\assets\peakmode.ico" LogicalName="PeakModeTray.peakmode.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(CoreDllPath)" Link="PeakModeCore.dll"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+          ExcludeFromSingleFile="true"
+          Condition="Exists('$(CoreDllPath)')" />
+    <None Include="..\..\config\peakmode.json" Link="config\peakmode.json"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+          ExcludeFromSingleFile="true" />
   </ItemGroup>
 
 </Project>
