@@ -30,6 +30,7 @@ bool                 g_testMode    = false;
 json                 g_doc;          // in-memory copy of the journal being written
 bool                 g_open        = false;
 int                  g_dieAfter    = 0;
+std::string          g_moduleTag;
 
 // SYSTEM + Administrators: full control. Nobody else. Protected (P) so
 // nothing is inherited from %ProgramData%, which lets Users create files.
@@ -285,10 +286,22 @@ bool Snapshot::begin(const std::string& profileName, std::string& error) {
 
 void Snapshot::setDieAfterRecordsForTests(int n) { g_dieAfter = n; }
 
+void Snapshot::setModuleTag(const std::string& tag) {
+    std::lock_guard<std::recursive_mutex> lock(g_mutex);
+    g_moduleTag = tag;
+}
+
+int Snapshot::entryCount() {
+    std::lock_guard<std::recursive_mutex> lock(g_mutex);
+    return g_open ? static_cast<int>(g_doc["entries"].size()) : 0;
+}
+
 bool Snapshot::record(const Entry& entry) {
     std::lock_guard<std::recursive_mutex> lock(g_mutex);
     if (!g_open) return false;
-    g_doc["entries"].push_back(entry);
+    Entry tagged = entry;
+    if (!g_moduleTag.empty() && !tagged.contains("module")) tagged["module"] = g_moduleTag;
+    g_doc["entries"].push_back(std::move(tagged));
     if (flush()) {
         if (g_dieAfter > 0 && static_cast<int>(g_doc["entries"].size()) >= g_dieAfter) {
             fprintf(stdout, "[test] simulated crash after %d snapshot entries\n", g_dieAfter);
@@ -338,7 +351,7 @@ bool Snapshot::load(Entry& out, std::string& error) {
     return true;
 }
 
-Snapshot::RestoreReport Snapshot::restoreAll(const Handler& handler) {
+Snapshot::RestoreReport Snapshot::restoreAll(const Handler& handler, const EntryDone& onEntry) {
     std::lock_guard<std::recursive_mutex> lock(g_mutex);
     RestoreReport rep;
 
@@ -362,10 +375,16 @@ Snapshot::RestoreReport Snapshot::restoreAll(const Handler& handler) {
         } catch (const std::exception& ex) {
             e = std::string("exception: ") + ex.what();
         }
-        if (ok) { ++rep.restored; return; }
-        failed[i] = true;
-        ++rep.failed;
-        rep.errors.push_back(entries[i].value("kind", std::string("?")) + ": " + e);
+        if (ok) {
+            ++rep.restored;
+        } else {
+            failed[i] = true;
+            ++rep.failed;
+            rep.errors.push_back(entries[i].value("kind", std::string("?")) + ": " + e);
+        }
+        if (onEntry) {
+            try { onEntry(entries[i], ok); } catch (...) {} // progress must not break restore
+        }
     };
 
     // Undo in reverse order of application, deferred entries last.

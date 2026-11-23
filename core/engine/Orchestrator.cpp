@@ -45,10 +45,126 @@ bool Orchestrator::restoreEntry(const Snapshot::Entry& e, std::string& error) {
     return false;
 }
 
+// ── steps and progress ──────────────────────────────────────────────────────
+namespace {
+const char* const kStepNames[STEP_COUNT] = {
+    "process", "timer", "power", "nagle", "services", "nvidia", "interrupt",
+};
+
+bool startsWithI(const std::string& s, const char* prefix) {
+    size_t n = strlen(prefix);
+    return s.size() >= n && _strnicmp(s.c_str(), prefix, n) == 0;
+}
+} // namespace
+
+const char* Orchestrator::stepName(int step) {
+    return (step >= 0 && step < STEP_COUNT) ? kStepNames[step] : "";
+}
+
+int Orchestrator::stepOfEntry(const Snapshot::Entry& e) {
+    if (e.contains("module") && e["module"].is_string()) {
+        const std::string m = e["module"].get<std::string>();
+        for (int i = 0; i < STEP_COUNT; ++i)
+            if (m == kStepNames[i]) return i;
+        return -1;
+    }
+    // Entries from before steps were tagged (v0.1.0 snapshots)
+    const std::string kind = e.value("kind", std::string());
+    if (kind == "process")                                     return STEP_PROCESS;
+    if (kind == "powerScheme" || kind == "powerSchemeCreated") return STEP_POWER;
+    if (kind == "service")                                     return STEP_SERVICES;
+    if (kind == "drs")                                         return STEP_NVIDIA;
+    if (kind == "nicRestart")                                  return STEP_INTERRUPT;
+    if (kind == "registryValue" || kind == "registryKey") {
+        const std::string path = e.value("path", std::string());
+        if (startsWithI(path, "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\")) return STEP_NAGLE;
+        if (startsWithI(path, "SYSTEM\\CurrentControlSet\\Control\\Class\\") ||
+            startsWithI(path, "SYSTEM\\CurrentControlSet\\Enum\\"))           return STEP_INTERRUPT;
+    }
+    return -1;
+}
+
+std::vector<Orchestrator::StepDef> Orchestrator::stepsFor(const Profile& p) {
+    const bool win = p.windowsTweaks;
+    return {
+        { STEP_PROCESS,   win && (p.setProcPriorityHigh || p.pinToPCores),
+          [&p] { WindowsTweaks::applyTargetProcess(p); } },
+        { STEP_TIMER,     win && p.setTimerResolution,
+          [] { WindowsTweaks::applyTimerResolution(); }, true },
+        { STEP_POWER,     win && p.setUltimatePerf,
+          [] { WindowsTweaks::applyPowerPlan(); } },
+        { STEP_NAGLE,     win && p.disableNagle,
+          [] { WindowsTweaks::applyNagle(); } },
+        { STEP_SERVICES,  win && (p.disableSysMain || p.disableSearchIndex),
+          [&p] { WindowsTweaks::applyServices(p); } },
+        { STEP_NVIDIA,    p.nvidiaTweaks,
+          [&p] { NvidiaTweaks::apply(p); } },
+        { STEP_INTERRUPT, p.interruptTweaks && (p.redirectNicIrq || p.disableNicInterruptMod),
+          [&p] { InterruptTweaks::apply(p); } },
+    };
+}
+
+void Orchestrator::runSteps(const std::vector<StepDef>& steps, const Emit& emit) {
+    for (const auto& s : steps) {
+        if (!s.enabled) continue;
+        const int before = Snapshot::entryCount();
+        if (emit) emit(PM_EV_STEP_BEGIN, s.id, 0, before);
+        Snapshot::setModuleTag(stepName(s.id));
+        try {
+            s.run();
+        } catch (...) {
+            Snapshot::setModuleTag("");
+            Log("[Orchestrator] step %s: failed", stepName(s.id));
+            if (emit) emit(PM_EV_STEP_END, s.id, PM_STEP_FAILED, Snapshot::entryCount());
+            throw;
+        }
+        Snapshot::setModuleTag("");
+        const int after = Snapshot::entryCount();
+        const int status = (after > before || s.appliedWithoutEntries) ? PM_STEP_APPLIED
+                                                                       : PM_STEP_SKIPPED;
+        Log("[Orchestrator] step %s: %s (%d snapshot entries)", stepName(s.id),
+            status == PM_STEP_APPLIED ? "applied" : "nothing to change", after - before);
+        if (emit) emit(PM_EV_STEP_END, s.id, status, after);
+    }
+}
+
+void Orchestrator::setProgressCallback(ProgressFn fn, void* user) {
+    std::lock_guard<std::mutex> lock(m_cbMutex);
+    m_progress     = fn;
+    m_progressUser = user;
+}
+
+void Orchestrator::emit(int event, int step, int status, int entries) const {
+    ProgressFn fn;
+    void* user;
+    {
+        std::lock_guard<std::mutex> lock(m_cbMutex);
+        fn   = m_progress;
+        user = m_progressUser;
+    }
+    if (fn) fn(event, step, status, entries, user);
+}
+
+// ── activate / restore ──────────────────────────────────────────────────────
 int Orchestrator::activate(const std::string& profilePath) {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    int entries = 0;
+    int rc = activateImpl(profilePath, entries);
+    emit(PM_EV_DONE, -1, rc, entries);
+    return rc;
+}
+
+int Orchestrator::restore() {
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    int restored = 0;
+    int rc = restoreImpl(restored);
+    emit(PM_EV_DONE, -1, rc, restored);
+    return rc;
+}
+
+int Orchestrator::activateImpl(const std::string& profilePath, int& entries) {
     m_lastError.clear();
-    if (m_active) return PM_OK;
+    if (m_active) { entries = Snapshot::entryCount(); return PM_OK; }
 
     auto loaded = ProfileManager::load(profilePath);
     for (const auto& w : loaded.warnings)
@@ -68,24 +184,30 @@ int Orchestrator::activate(const std::string& profilePath) {
     Log("[Orchestrator] Activating profile \"%s\"", profile.name.c_str());
     m_applied = profile;
     m_active  = true;
+    std::string what;
     try {
-        if (profile.windowsTweaks)   WindowsTweaks::apply(profile);
-        if (profile.nvidiaTweaks)    NvidiaTweaks::apply(profile);
-        if (profile.interruptTweaks) InterruptTweaks::apply(profile);
+        runSteps(stepsFor(profile), [this](int ev, int step, int status, int n) {
+            emit(ev, step, status, n);
+        });
     } catch (const std::exception& ex) {
-        Log("[Orchestrator] exception during activation: %s; rolling back", ex.what());
-        restore();
-        return fail(PM_ERR_INTERNAL, std::string("Activation failed and was rolled back: ")
-                                     + ex.what());
+        what = ex.what();
+    } catch (...) {
+        what = "unknown exception";
     }
+    if (!what.empty()) {
+        Log("[Orchestrator] exception during activation: %s; rolling back", what.c_str());
+        int ignored = 0;
+        restoreImpl(ignored);
+        return fail(PM_ERR_INTERNAL, "Activation failed and was rolled back: " + what);
+    }
+    entries = Snapshot::entryCount();
     if (!Snapshot::markActive())
         Log("[Orchestrator] warning: could not mark snapshot active");
-    Log("[Orchestrator] Active");
+    Log("[Orchestrator] Active (%d snapshot entries)", entries);
     return PM_OK;
 }
 
-int Orchestrator::restore() {
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+int Orchestrator::restoreImpl(int& restored) {
     m_lastError.clear();
 
     // In-process state that is not journaled (released automatically if the
@@ -102,8 +224,19 @@ int Orchestrator::restore() {
     }
 
     Log("[Orchestrator] Restoring from snapshot");
-    auto rep = Snapshot::restoreAll(&Orchestrator::restoreEntry);
+    {
+        Snapshot::Entry doc;
+        std::string err;
+        int total = Snapshot::load(doc, err) ? static_cast<int>(doc["entries"].size()) : 0;
+        emit(PM_EV_RESTORE_BEGIN, -1, 0, total);
+    }
+    int handled = 0;
+    auto rep = Snapshot::restoreAll(&Orchestrator::restoreEntry,
+        [this, &handled](const Snapshot::Entry& e, bool ok) {
+            emit(PM_EV_ENTRY_RESTORED, stepOfEntry(e), ok ? 0 : PM_STEP_FAILED, ++handled);
+        });
     m_active = false;
+    restored = rep.restored;
     for (const auto& e : rep.errors) Log("[Orchestrator] restore error: %s", e.c_str());
     Log("[Orchestrator] Restore: %d restored, %d failed", rep.restored, rep.failed);
 
@@ -138,6 +271,11 @@ int Orchestrator_Restore(PeakMode::Orchestrator* inst) {
 int Orchestrator_GetState(PeakMode::Orchestrator* inst) {
     if (!inst) return 0;
     return static_cast<int>(inst->state());
+}
+
+void Orchestrator_SetProgressCallback(PeakMode::Orchestrator* inst,
+                                      PeakMode::Orchestrator::ProgressFn fn, void* user) {
+    if (inst) inst->setProgressCallback(fn, user);
 }
 
 int PeakMode_HasLeftoverSnapshot() {

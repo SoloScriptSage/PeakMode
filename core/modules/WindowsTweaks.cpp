@@ -318,15 +318,9 @@ void WindowsTweaks::stopService(const wchar_t* name) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void WindowsTweaks::apply(const Profile& p) {
-    Log("[WindowsTweaks] Applying...");
-    applyTargetProcess(p);
-    if (p.setTimerResolution) applyTimerResolution();
-    if (p.setUltimatePerf)    applyPowerPlan();
-    if (p.disableNagle)       applyNagle();
+void WindowsTweaks::applyServices(const Profile& p) {
     if (p.disableSysMain)     stopService(L"SysMain");
     if (p.disableSearchIndex) stopService(L"WSearch");
-    Log("[WindowsTweaks] Done.");
 }
 
 bool WindowsTweaks::ownsKind(const std::string& k) {

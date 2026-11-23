@@ -22,6 +22,8 @@ class Snapshot {
 public:
     using Entry   = nlohmann::json;
     using Handler = std::function<bool(const Entry&, std::string& error)>;
+    // Called after each entry's handler ran (ok = handler succeeded).
+    using EntryDone = std::function<void(const Entry&, bool ok)>;
 
     struct RestoreReport {
         bool                     ok = false;   // everything restored, file removed
@@ -51,14 +53,23 @@ public:
     static bool begin(const std::string& profileName, std::string& error);
 
     // Append and flush to disk. Returns false if the write failed.
+    // While a module tag is set, entries without "module" get "module": tag.
     static bool record(const Entry& entry);
+
+    // Tag for entries recorded from now on (the activation step that is
+    // running, e.g. "nagle"). Empty = no tag.
+    static void setModuleTag(const std::string& tag);
+
+    // Entries in the journal being written (0 if none is open).
+    static int  entryCount();
 
     static bool markActive();
 
     // Restore every entry from the on-disk journal using `handler`.
     // Removes the file if all entries succeed; otherwise rewrites it with
     // only the failed entries so a later retry can finish the job.
-    static RestoreReport restoreAll(const Handler& handler);
+    // `onEntry` (optional) runs after each entry, in restore order.
+    static RestoreReport restoreAll(const Handler& handler, const EntryDone& onEntry = {});
 
     // Read-only view of the on-disk journal (for status / diagnostics).
     static bool load(Entry& out, std::string& error);
