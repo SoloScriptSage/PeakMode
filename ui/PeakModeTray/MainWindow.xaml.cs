@@ -23,6 +23,16 @@ public partial class MainWindow : Window
 
     internal bool AllowClose { get; set; }
 
+    // Sidebar: show one page (Checked fires during InitializeComponent too)
+    private void OnNavBoost(object sender, RoutedEventArgs e)  => ShowPage(boost: true);
+    private void OnNavTweaks(object sender, RoutedEventArgs e) => ShowPage(boost: false);
+    private void ShowPage(bool boost)
+    {
+        if (BoostPage == null || TweaksPage == null) return;
+        BoostPage.Visibility  = boost ? Visibility.Visible : Visibility.Collapsed;
+        TweaksPage.Visibility = boost ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     // Hero layout: counter and hint under the gauge, or beside it when that
     // gives a bigger gauge (wide, short card at small window heights).
     private const double SideTextWidth = 200, SideGap = 20, MaxGauge = 290;

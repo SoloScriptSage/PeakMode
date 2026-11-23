@@ -31,7 +31,7 @@ namespace PeakModeTray
             if (Array.IndexOf(e.Args, "--window-preview") >= 0)
             {
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
-                var preview = new MainWindow(new ViewModels.BoostViewModel(new PreviewCoreService(), TrayApp.FindConfig()))
+                var preview = new MainWindow(CreateMainViewModel(new PreviewCoreService(), PreviewConfig()))
                 {
                     AllowClose = true, Title = "PeakMode (preview, simulated core)",
                 };
@@ -75,11 +75,32 @@ namespace PeakModeTray
         private void OpenWindow()
         {
             if (_core == null) return;
-            _window ??= new MainWindow(new ViewModels.BoostViewModel(_core, TrayApp.FindConfig()));
+            _window ??= new MainWindow(CreateMainViewModel(_core, TrayApp.FindConfig()));
             _window.Show();
             if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
             _window.Activate();
         }
+
+        private static ViewModels.MainViewModel CreateMainViewModel(ICoreService core, string? configPath)
+        {
+            var store  = new ProfileStore(configPath);
+            var boost  = new ViewModels.BoostViewModel(core, configPath);
+            var tweaks = new ViewModels.TweaksViewModel(core, store);
+            store.Changed += boost.ProfileChanged;
+            return new ViewModels.MainViewModel(boost, tweaks);
+        }
+
+#if DEBUG
+        // The preview edits a copy of the config in %TEMP%, never the real one
+        private static string? PreviewConfig()
+        {
+            string? real = TrayApp.FindConfig();
+            if (real == null) return null;
+            string copy = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "peakmode-preview-config.json");
+            System.IO.File.Copy(real, copy, overwrite: true);
+            return copy;
+        }
+#endif
 
         private void ShutdownAll()
         {

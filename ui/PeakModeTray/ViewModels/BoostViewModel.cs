@@ -270,6 +270,13 @@ namespace PeakModeTray.ViewModels
         }
 
         // ── profile and session log ──────────────────────────────────────────
+        // Called when the Tweaks screen saved the profile
+        internal void ProfileChanged()
+        {
+            LoadProfile();
+            if (!_core.IsBusy && _core.State == PeakModeCore.StateIdle) RefreshFromState();
+        }
+
         private void LoadProfile()
         {
             JsonNode? root = null;
