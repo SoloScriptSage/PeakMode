@@ -14,8 +14,10 @@ namespace PeakModeTray
     // The core holds its lock for the whole of activate/restore, so the
     // state is cached here instead of calling Orchestrator_GetState while
     // an operation runs.
-    internal sealed class CoreService : IDisposable
+    internal sealed class CoreService : ICoreService, IDisposable
     {
+        public string ReadSessions() => PeakModeCore.ReadSessions();
+
         private readonly IntPtr                    _core;
         private readonly Dispatcher                _ui;
         private readonly SemaphoreSlim             _gate = new(1, 1);
