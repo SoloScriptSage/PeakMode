@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PeakMode app: boost screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#07080C}
+a{color:#FF8FB5;text-decoration:none}a:hover{color:#FFC2D6}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+.pm-grid{background-image:radial-gradient(#1A1D27 1px,transparent 1px);background-size:22px 22px}
+@keyframes pmPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes pmGlow{0%,100%{filter:drop-shadow(0 0 22px rgba(255,61,127,.45))}50%{filter:drop-shadow(0 0 38px rgba(255,61,127,.8))}}
+@keyframes pmShake{0%,100%{transform:translate(0,0)}25%{transform:translate(.6px,-.6px)}75%{transform:translate(-.6px,.6px)}}
+.pm-pulse{animation:pmPulse .7s ease-in-out infinite}
+.pm-glow{animation:pmGlow 1.8s ease-in-out infinite}
+.pm-shake{animation:pmShake .12s linear infinite}
+@keyframes pmRev{0%{transform:rotate(0)}10%{transform:rotate(19deg)}18%{transform:rotate(9deg)}28%{transform:rotate(23deg)}40%{transform:rotate(3deg)}52%{transform:rotate(17deg)}62%{transform:rotate(-3deg)}74%{transform:rotate(21deg)}86%{transform:rotate(6deg)}100%{transform:rotate(0)}}
+@keyframes pmFlicker{0%,100%{opacity:1}30%{opacity:.5}45%{opacity:.95}70%{opacity:.6}}
+@keyframes pmVibe{0%,100%{transform:translate(0,0)}50%{transform:translate(.4px,.3px)}}
+.pm-rev{animation:pmRev 1.4s ease-in-out infinite}
+.pm-flicker{animation:pmFlicker .35s linear infinite}
+.pm-active{animation:pmGlow 1.8s ease-in-out infinite,pmVibe .09s linear infinite}
+</style>
+</helmet>
+<div class="pm-grid" style="width: 100%; min-height: 800px; box-sizing: border-box; background-color: #07080C; display: flex; flex-wrap: wrap; font-family: Inter, sans-serif; color: #F3F1EC">
+  <nav style="flex: 1 1 220px; max-width: 260px; min-width: 200px; box-sizing: border-box; padding: 24px 16px; background: #0B0C12; border-right: 1px solid #1C1F2A; display: flex; flex-direction: column; gap: 6px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px">
+      <img src="/_blob/ee38bdb92c9616d43345f4198bbe32b3" alt="" style="width: 40px; height: 40px">
+      <div style="font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 2px">PEAKMODE</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+      <a href="{{n.href}}" style="{{n.style}}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.icon}}"></path></svg>
+        <span>{{n.label}}</span>
+      </a>
+    </sc-for>
+    <div style="flex-grow: 1; min-height: 40px"></div>
+    <div style="padding: 12px; border: 1px solid #1C1F2A; border-radius: 8px; font-size: 12px; color: #A0A6AF; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-family: 'JetBrains Mono', monospace; color: #F3F1EC">v0.1.0</span>
+      <span>Free and open source. No account, no limits.</span>
+      <a href="https://github.com/SoloScriptSage/PeakMode">GitHub</a>
+    </div>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 40px; display: flex; flex-direction: column; gap: 28px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+      <div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FF8FB5; letter-spacing: 2px">PROFILE / GAMING</div>
+        <h1 style="margin: 4px 0 0; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 40px; letter-spacing: 1px">{{title}}</h1>
+      </div>
+      <div class="{{chipClass}}" style="{{chipStyle}}">{{chip}}</div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: stretch">
+      <div style="flex: 1 1 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; background: #0D0F16; border: 1px solid #1C1F2A; clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 28px 100%, 0 calc(100% - 28px))">
+        <button onClick="{{toggle}}" disabled="{{busy}}" aria-label="{{btnAria}}" class="{{btnClass}}" style="background: none; border: none; padding: 0; width: 290px; height: 290px; display: block">
+          <svg width="290" height="290" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <linearGradient id="heat" gradientUnits="userSpaceOnUse" x1="12" y1="88" x2="88" y2="12"><stop offset="0" stop-color="#7C5CFF"></stop><stop offset="0.55" stop-color="#FF3D7F"></stop><stop offset="1" stop-color="#FFB020"></stop></linearGradient>
+              <linearGradient id="redline" gradientUnits="userSpaceOnUse" x1="66" y1="30" x2="76" y2="68"><stop offset="0" stop-color="#FF3D7F"></stop><stop offset="1" stop-color="#FFB020"></stop></linearGradient>
+              <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1C2030"></stop><stop offset="1" stop-color="#0A0B10"></stop></linearGradient>
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+            </defs>
+            <polygon points="50,4 89.84,27 89.84,73 50,96 10.16,73 10.16,27" fill="url(#tile)" stroke="url(#heat)" stroke-width="4" stroke-linejoin="round"></polygon>
+            <polygon points="50,11 83.77,30.5 83.77,69.5 50,89 16.23,69.5 16.23,30.5" fill="none" stroke="#2A3040" stroke-width="1.5" stroke-linejoin="round"></polygon>
+            <path d="{{tDimGrey}}" fill="none" stroke="#3A4050" stroke-width="3" stroke-linecap="round"></path>
+            <path d="{{tDimRed}}" fill="none" stroke="#4A1D33" stroke-width="4.5" stroke-linecap="round"></path>
+            <path d="{{tLitGrey}}" fill="none" stroke="#E9E7F2" stroke-width="3" stroke-linecap="round" style="transition: d .2s"></path>
+            <g filter="url(#glow)" class="{{redClass}}"><path d="{{tLitRed}}" fill="none" stroke="url(#redline)" stroke-width="4.5" stroke-linecap="round"></path></g>
+            <g style="transform-origin: 50px 53px; transform: rotate({{needle}}deg); transition: transform .45s cubic-bezier(.25,1.9,.5,1)">
+              <g class="{{revClass}}" style="transform-origin: 50px 53px">
+                <polygon points="50,21.5 52.2,53.5 50,61.5 47.8,53.5" fill="#FFFFFF" filter="url(#glow)"></polygon>
+              </g>
+            </g>
+            <circle cx="50" cy="53" r="5.5" fill="#0A0B10" stroke="url(#heat)" stroke-width="2.8"></circle>
+            <text x="50" y="79" text-anchor="middle" fill="#F3F1EC" style="font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: {{labelSize}}px; letter-spacing: .8px">{{btnLabel}}</text>
+          </svg>
+        </button>
+        <div style="display: flex; align-items: baseline; gap: 10px">
+          <span style="{{countStyle}}">{{count}}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 1.5px; color: #A0A6AF">/ {{totalEntries}} SETTINGS APPLIED</span>
+        </div>
+        <div style="font-size: 13px; color: #A0A6AF; text-align: center; max-width: 300px; min-height: 36px">{{hint}}</div>
+      </div>
+      <div style="flex: 1 1 300px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+        <sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+          <div style="padding: 18px; background: #0D0F16; border: 1px solid #1C1F2A; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1.5px; color: #A0A6AF">{{s.label}}</span>
+            <span style="{{s.style}}">{{s.value}}</span>
+            <span style="font-size: 12px; color: #A0A6AF">{{s.note}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px">
+        <h2 style="margin: 0; font-family: 'Chakra Petch', sans-serif; font-weight: 600; font-size: 20px; letter-spacing: 1px">TWEAKS IN THIS PROFILE</h2>
+        <span style="font-size: 12px; color: #A0A6AF">Toggle to include or skip</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px">
+        <sc-for list="{{mods}}" as="m" hint-placeholder-count="6">
+          <div style="{{m.cardStyle}}">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{m.iconColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.icon}}"></path></svg>
+              <span style="font-weight: 600; font-size: 15px; flex-grow: 1">{{m.name}}</span>
+              <button onClick="{{m.flip}}" disabled="{{busyOrActive}}" aria-label="{{m.aria}}" style="{{m.track}}"><span style="{{m.knob}}"></span></button>
+            </div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #A0A6AF">{{m.detail}}</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center">
+              <span class="{{m.statusClass}}" style="{{m.statusStyle}}">{{m.status}}</span>
+              <sc-if value="{{m.warn}}" hint-placeholder-val="{{ false }}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 3px 8px; border: 1px solid #5A4520; color: #FFB020">DROPS NETWORK FOR A FEW SECONDS</span></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </main>
+</div>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;display=swap"></helmet></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"stepMs":{"editor":"int","default":650,"min":200,"max":2000,"unit":"ms"},"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { phase: 'idle', step: 0, off: { irq: true } }; this.timer = null; }
+  componentWillUnmount(){ if (this.timer) clearInterval(this.timer); }
+  defs(){ return [
+    ['power','Power plan','power','Balanced → High performance',false,1],
+    ['net','Nagle off','net','6 adapters, 12 registry values',false,12],
+    ['svc','Background services','svc','SysMain, Windows Search paused',false,2],
+    ['timer','Timer resolution','timer','default → 0.5 ms while active',false,0],
+    ['gpu','NVIDIA driver','gpu','4 driver profile settings',false,4],
+    ['irq','Interrupts and NIC','irq','IRQ affinity, adapter buffers',true,0]
+  ]; }
+  run(){
+    const enabled = this.defs().filter(d => !this.state.off[d[0]]).length;
+    if (!enabled || this.timer) return;
+    const ms = this.props.stepMs ?? 650;
+    if (this.state.phase === 'idle') {
+      this.setState({ phase: 'applying', step: 0 });
+      this.timer = setInterval(() => {
+        const s = this.state.step + 1;
+        if (s >= enabled) { clearInterval(this.timer); this.timer = null; this.setState({ step: enabled, phase: 'active' }); }
+        else this.setState({ step: s });
+      }, ms);
+    } else if (this.state.phase === 'active') {
+      this.setState({ phase: 'restoring', step: enabled });
+      this.timer = setInterval(() => {
+        const s = this.state.step - 1;
+        if (s <= 0) { clearInterval(this.timer); this.timer = null; this.setState({ step: 0, phase: 'idle' }); }
+        else this.setState({ step: s });
+      }, Math.round(ms * 0.7));
+    }
+  }
+  ticks(upto){
+    const seg = (a, r1, r2) => { const t = a * Math.PI / 180; return 'M' + (50 + r1 * Math.sin(t)).toFixed(2) + ' ' + (53 - r1 * Math.cos(t)).toFixed(2) + 'L' + (50 + r2 * Math.sin(t)).toFixed(2) + ' ' + (53 - r2 * Math.cos(t)).toFixed(2); };
+    const o = { dg: '', dr: '', lg: '', lr: '' };
+    for (let a = -120; a <= 120; a += 20) {
+      const red = a >= 40, lit = upto !== null && a <= upto + 0.5;
+      const d = red ? seg(a, 30, 21) : seg(a, 30, 25);
+      if (red) { if (lit) o.lr += d; else o.dr += d; } else { if (lit) o.lg += d; else o.dg += d; }
+    }
+    for (const k in o) if (!o[k]) o[k] = 'M0 0';
+    return o;
+  }
+  renderVals() {
+    const { phase, step, off } = this.state;
+    const busy = phase === 'applying' || phase === 'restoring';
+    const I = {
+      boost: 'M13 2L4 14h7l-1 8 9-12h-7z', tweaks: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12', hist: 'M3 12a9 9 0 103-6.7L3 8M3 3v5h5M12 7v5l3 2', set: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12h2M3 12h2M12 3v2M12 19v2',
+      power: 'M13 2L4 14h7l-1 8 9-12h-7z', net: 'M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M12 19.5h.01', svc: 'M4 6h16M4 12h16M4 18h10',
+      timer: 'M12 8v4l3 2M12 21a9 9 0 100-18 9 9 0 000 18z', gpu: 'M3 7h18v10H3zM7 17v3M17 17v3M8 12h3', irq: 'M4 12h4l2-6 4 12 2-6h4'
+    };
+    const nav = [['Boost','App.dc.html','boost',true],['Tweaks','Tweaks.dc.html','tweaks',false],['History','History.dc.html','hist',false],['Settings','#settings','set',false]].map(n => ({
+      label: n[0], href: n[1], icon: I[n[2]],
+      style: 'display: flex; align-items: center; gap: 12px; padding: 11px 12px; font-size: 14px; font-weight: 500; ' + (n[3] ? 'color: #F3F1EC; background: #1A0E16; border-left: 3px solid #FF3D7F' : 'color: #A0A6AF; border-left: 3px solid transparent')
+    }));
+    const enabledDefs = this.defs().filter(d => !off[d[0]]);
+    const total = enabledDefs.length || 1;
+    const totalEntries = enabledDefs.reduce((s, d) => s + d[5], 0);
+    let applied = 0; enabledDefs.forEach((d, i) => { if (i < step) applied += d[5]; });
+    const frac = step / total;
+    let ei = -1;
+    const mods = this.defs().map(d => {
+      const on = !off[d[0]]; if (on) ei++;
+      const idx = on ? ei : -1;
+      let status = on ? 'READY' : 'SKIPPED', live = false, hot = false;
+      if (on && phase === 'applying') { if (idx < step) { status = 'APPLIED'; hot = true; } else if (idx === step) { status = 'APPLYING'; live = true; } else status = 'QUEUED'; }
+      if (on && phase === 'active') { status = 'APPLIED'; hot = true; }
+      if (on && phase === 'restoring') { if (idx < step - 1) { status = 'APPLIED'; hot = true; } else if (idx === step - 1) { status = 'RESTORING'; live = true; } else status = 'RESTORED'; }
+      const lit = hot || live;
+      return { name: d[1], icon: I[d[2]], detail: d[3], warn: d[4] && on,
+        status, statusClass: live ? 'pm-pulse' : '',
+        statusStyle: 'font-family: JetBrains Mono, monospace; font-size: 10px; letter-spacing: 1px; padding: 3px 8px; border: 1px solid ' + (hot ? '#FF3D7F' : live ? '#FFB020' : '#2A2E3A') + '; color: ' + (hot ? '#FF8FB5' : live ? '#FFB020' : '#A0A6AF'),
+        iconColor: lit ? '#FF3D7F' : (on ? '#F3F1EC' : '#4A4F5C'),
+        aria: (on ? 'Skip ' : 'Include ') + d[1],
+        cardStyle: 'padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: background .3s, border-color .3s; background: ' + (lit ? '#160B12' : '#0D0F16') + '; border: 1px solid ' + (live ? '#FFB020' : hot ? '#5A2140' : '#1C1F2A') + '; opacity: ' + (on ? 1 : 0.5) + '; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)',
+        track: 'width: 44px; height: 24px; border-radius: 12px; border: none; position: relative; flex-shrink: 0; background: ' + (on ? '#FF3D7F' : '#2A2E3A'),
+        knob: 'position: absolute; top: 3px; width: 18px; height: 18px; border-radius: 9px; background: #F3F1EC; transition: left .2s; left: ' + (on ? '23px' : '3px'),
+        flip: () => { if (this.state.phase === 'idle') this.setState({ off: Object.assign({}, off, { [d[0]]: on }) }); }
+      };
+    });
+    const base = phase === 'active' ? 95 : -120 + 215 * frac;
+    const tk = this.ticks(phase === 'idle' ? null : (phase === 'active' ? 120 : base));
+    const powerOn = !off.power && enabledDefs.findIndex(d => d[0] === 'power') < step;
+    const timerOn = !off.timer && enabledDefs.findIndex(d => d[0] === 'timer') < step;
+    const numStyle = (hot) => 'font-family: Chakra Petch, sans-serif; font-weight: 700; font-size: 30px; transition: color .3s; color: ' + (hot ? '#FF3D7F' : '#F3F1EC');
+    const stats = [
+      { label: 'CHANGES APPLIED', value: applied + ' / ' + totalEntries, note: applied ? 'Originals saved first' : 'Nothing changed yet', style: numStyle(applied > 0) },
+      { label: 'SNAPSHOT', value: phase === 'idle' ? 'NONE' : 'SAVED', note: phase === 'idle' ? 'Written before the first change' : 'Survives crash and reboot', style: numStyle(phase !== 'idle') },
+      { label: 'POWER PLAN', value: powerOn ? 'HIGH PERF' : 'BALANCED', note: 'Windows power scheme', style: numStyle(powerOn) },
+      { label: 'TIMER', value: timerOn ? '0.5 MS' : 'DEFAULT', note: 'System timer resolution', style: numStyle(timerOn) }
+    ];
+    const labels = { idle: ['BOOST', 9.5], applying: ['BOOSTING', 7], active: ['ACTIVE', 8.5], restoring: ['RESTORING', 6.2] };
+    const lb = labels[phase];
+    return {
+      nav, mods, stats, busy, busyOrActive: phase !== 'idle',
+      title: { idle: 'READY TO BOOST', applying: 'BOOSTING...', active: 'BOOST ACTIVE', restoring: 'RESTORING...' }[phase],
+      chip: { idle: '○ IDLE', applying: '◆ APPLYING', active: '● ACTIVE', restoring: '◆ RESTORING' }[phase],
+      chipClass: busy ? 'pm-pulse' : '',
+      chipStyle: 'font-family: JetBrains Mono, monospace; font-size: 12px; letter-spacing: 1.5px; padding: 8px 14px; ' + (phase === 'idle' ? 'color: #A0A6AF; border: 1px solid #2A2E3A' : 'color: #FF8FB5; border: 1px solid #FF3D7F; background: #1A0E16'),
+      tDimGrey: tk.dg, tDimRed: tk.dr, tLitGrey: tk.lg, tLitRed: tk.lr,
+      needle: base.toFixed(1),
+      revClass: phase === 'active' ? 'pm-rev' : '',
+      redClass: phase === 'active' ? 'pm-flicker' : '',
+      count: applied, totalEntries,
+      countStyle: 'font-family: JetBrains Mono, monospace; font-weight: 700; font-size: 34px; transition: color .3s; color: ' + (applied ? '#FF3D7F' : '#F3F1EC'),
+      btnLabel: lb[0], labelSize: lb[1],
+      btnClass: phase === 'active' ? 'pm-active' : busy ? 'pm-shake' : '',
+      btnAria: phase === 'active' ? 'Restore all settings' : 'Activate boost profile',
+      hint: { idle: 'Every original value is saved to disk before it is changed.', applying: 'Applying one module at a time. Each step is written to the snapshot first.', active: 'Restore puts every setting back exactly as it was, in reverse order.', restoring: 'Putting your settings back, newest change first.' }[phase],
+      toggle: () => this.run()
+    };
+  }
+}
+</script>
+</body>
+</html>
