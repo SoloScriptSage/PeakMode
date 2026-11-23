@@ -19,6 +19,15 @@ namespace PeakModeTray
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+#if DEBUG
+            // Visual test bench for the gauge; no core, tray or mutex
+            if (Array.IndexOf(e.Args, "--gauge-lab") >= 0)
+            {
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+                MainWindow = new Controls.GaugeLabWindow();
+                return;
+            }
+#endif
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             // Two tray instances would apply and journal tweaks twice.
