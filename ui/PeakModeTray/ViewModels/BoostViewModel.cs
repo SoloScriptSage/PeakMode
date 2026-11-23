@@ -55,8 +55,8 @@ namespace PeakModeTray.ViewModels
         public ObservableCollection<ModuleCardViewModel> Modules { get; } = new()
         {
             new(PeakModeCore.StepProcess,   "Process priority",    "no target process set",          Icons.Process, false),
-            new(PeakModeCore.StepTimer,     "Timer resolution",    "default -> 0.5 ms while active", Icons.Timer,   false),
-            new(PeakModeCore.StepPower,     "Power plan",          "-> High or Ultimate performance", Icons.Power,  false),
+            new(PeakModeCore.StepTimer,     "Timer resolution",    "default → 0.5 ms while active", Icons.Timer,   false),
+            new(PeakModeCore.StepPower,     "Power plan",          "→ High or Ultimate performance", Icons.Power,  false),
             new(PeakModeCore.StepNagle,     "Nagle off",           "TcpAckFrequency, TCPNoDelay = 1", Icons.Net,    false),
             new(PeakModeCore.StepServices,  "Background services", "SysMain, WSearch stopped",       Icons.Services, false),
             new(PeakModeCore.StepNvidia,    "NVIDIA driver",       "4 driver profile settings",      Icons.Gpu,     false),
