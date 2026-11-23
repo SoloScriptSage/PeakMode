@@ -33,8 +33,8 @@
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="16" />
-            <Setter Property="Margin" Value="0,0,14,14" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="0,0,12,12" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsHot}" Value="True">
                     <Setter Property="Background" Value="{StaticResource SurfaceHotBrush}" />
@@ -53,13 +53,14 @@
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="18" />
+            <Setter Property="Padding" Value="16,12" />
         </Style>
         <DataTemplate x:Key="StatTemplate" DataType="{x:Type vm:StatViewModel}">
             <Border Style="{StaticResource StatCard}">
-                <DockPanel LastChildFill="False">
-                    <TextBlock DockPanel.Dock="Top" Text="{Binding Label}" Style="{StaticResource LabelText}" />
-                    <TextBlock DockPanel.Dock="Top" Text="{Binding Value}" Margin="0,10,0,10" TextTrimming="CharacterEllipsis">
+                <StackPanel>
+                    <TextBlock Text="{Binding Label}" Style="{StaticResource LabelText}" />
+                    <TextBlock Text="{Binding Value}" Margin="0,6,0,4" FontSize="24" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Value}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource StatValueText}">
                                 <Style.Triggers>
@@ -70,8 +71,8 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Note}" Style="{StaticResource MutedText}" FontSize="12" />
-                </DockPanel>
+                    <TextBlock Text="{Binding Note}" Style="{StaticResource MutedText}" FontSize="12" />
+                </StackPanel>
             </Border>
         </DataTemplate>
     </Window.Resources>
@@ -114,10 +115,19 @@
         </Border>
 
         <!-- Boost screen -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Focusable="False">
-            <StackPanel Margin="40,32,40,40">
+        <!-- Fits the window without scrolling (min size 1100 x 720): the hero
+             row takes the free height up to 430 px, the rest goes to the
+             spacer row at the bottom. -->
+            <Grid Grid.Column="1" Margin="36,24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="100*" MinHeight="230" MaxHeight="430" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
                 <!-- Header -->
-                <DockPanel>
+                <DockPanel Grid.Row="0">
                     <Border DockPanel.Dock="Right" VerticalAlignment="Center" Padding="14,8" BorderThickness="1"
                             BorderBrush="{StaticResource BorderStrongBrush}">
                         <Border.Style>
@@ -156,26 +166,34 @@
                 </DockPanel>
 
                 <!-- Hero + stats -->
-                <Grid Margin="0,28,0,0">
+                <Grid Grid.Row="1" Margin="0,20,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="24" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" Padding="24">
-                        <StackPanel HorizontalAlignment="Center">
-                            <Button Command="{Binding ToggleCommand}" Width="290" Height="290" Cursor="Hand"
-                                    AutomationProperties.Name="{Binding HeroName}"
-                                    FocusVisualStyle="{StaticResource AccentFocusVisual}">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <ContentPresenter />
-                                    </ControlTemplate>
-                                </Button.Template>
-                                <c:BoostGauge Mode="{Binding Mode}" Progress="{Binding Progress}" />
-                            </Button>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0">
+                            BorderThickness="1" Padding="16,14">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <!-- Gauge scales with the space it gets, up to 290 px -->
+                            <Viewbox MaxWidth="290" MaxHeight="290" Stretch="Uniform">
+                                <Button Command="{Binding ToggleCommand}" Width="290" Height="290" Cursor="Hand"
+                                        AutomationProperties.Name="{Binding HeroName}"
+                                        FocusVisualStyle="{StaticResource AccentFocusVisual}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <c:BoostGauge Mode="{Binding Mode}" Progress="{Binding Progress}" />
+                                </Button>
+                            </Viewbox>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
                                 <TextBlock Text="{Binding Count}" VerticalAlignment="Bottom">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource CounterText}">
@@ -190,11 +208,12 @@
                                 <TextBlock Text="{Binding CountSuffix}" Style="{StaticResource LabelText}" FontSize="12"
                                            Margin="10,0,0,7" VerticalAlignment="Bottom" />
                             </StackPanel>
-                            <TextBlock Text="{Binding Hint}" Style="{StaticResource MutedText}" TextAlignment="Center"
-                                       MaxWidth="300" MinHeight="36" Margin="0,18,0,0" />
-                        </StackPanel>
+                            <TextBlock Grid.Row="2" Text="{Binding Hint}" Style="{StaticResource MutedText}"
+                                       TextAlignment="Center" HorizontalAlignment="Center"
+                                       MaxWidth="380" MinHeight="34" Margin="0,6,0,0" />
+                        </Grid>
                     </Border>
-                    <UniformGrid Grid.Column="2" Columns="2" Rows="2">
+                    <UniformGrid Grid.Column="2" Columns="2" Rows="2" VerticalAlignment="Top">
                         <ContentControl Content="{Binding ChangesStat}"  ContentTemplate="{StaticResource StatTemplate}" Margin="0,0,7,7" Focusable="False" />
                         <ContentControl Content="{Binding SnapshotStat}" ContentTemplate="{StaticResource StatTemplate}" Margin="7,0,0,7" Focusable="False" />
                         <ContentControl Content="{Binding PowerStat}"    ContentTemplate="{StaticResource StatTemplate}" Margin="0,7,7,0" Focusable="False" />
@@ -203,15 +222,15 @@
                 </Grid>
 
                 <!-- Module cards -->
-                <DockPanel Margin="0,28,0,14">
+                <DockPanel Grid.Row="2" Margin="0,20,0,10">
                     <TextBlock DockPanel.Dock="Right" Text="Change these on Tweaks" Style="{StaticResource MutedText}"
                                FontSize="12" VerticalAlignment="Bottom" />
                     <TextBlock Text="TWEAKS IN THIS PROFILE" Style="{StaticResource H2Text}" />
                 </DockPanel>
-                <ItemsControl ItemsSource="{Binding Modules}" Focusable="False" Margin="0,0,-14,0">
+                <ItemsControl Grid.Row="3" ItemsSource="{Binding Modules}" Focusable="False" Margin="0,0,-12,-12">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Columns="3" />
+                            <UniformGrid Columns="4" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
@@ -238,16 +257,19 @@
                                                 </Style>
                                             </Path.Style>
                                         </Path>
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}"
+                                                   Margin="10,0,0,0" VerticalAlignment="Center" ToolTip="{Binding Name}" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource MonoText}" Margin="0,8,0,8"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}" />
+                                    <DockPanel>
                                         <!-- Read-only here; switches write the profile on Tweaks (commit 7) -->
                                         <ToggleButton DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}"
+                                                      VerticalAlignment="Top"
                                                       IsChecked="{Binding Included, Mode=OneWay}" IsEnabled="False"
                                                       AutomationProperties.Name="{Binding SwitchName}" />
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}"
-                                                   Margin="10,0,10,0" VerticalAlignment="Center" />
-                                    </DockPanel>
-                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource MonoText}" Margin="0,10,0,10" />
                                     <WrapPanel>
-                                        <Border Style="{StaticResource StatusTagBorder}" Margin="0,0,6,0">
+                                        <Border Style="{StaticResource StatusTagBorder}" Margin="0,0,6,4">
                                             <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTagText}" />
                                         </Border>
                                         <Border Style="{StaticResource TagBorder}" BorderBrush="{StaticResource AmberBorderBrush}">
@@ -256,16 +278,17 @@
                                                     <Binding.Converter><BooleanToVisibilityConverter /></Binding.Converter>
                                                 </Binding>
                                             </Border.Visibility>
-                                            <TextBlock Text="DROPS NETWORK FOR A FEW SECONDS" Style="{StaticResource TagText}"
-                                                       Foreground="{StaticResource AmberBrush}" />
+                                            <TextBlock Text="NETWORK BLIP" Style="{StaticResource TagText}"
+                                                       Foreground="{StaticResource AmberBrush}"
+                                                       ToolTip="Drops the network for a few seconds" />
                                         </Border>
                                     </WrapPanel>
+                                    </DockPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
+            </Grid>
     </Grid>
 </Window>

@@ -250,7 +250,7 @@ namespace PeakModeTray.ViewModels
             ChangesStat.Note  = _applied > 0 ? "Originals saved first" : "Nothing changed yet";
             ChangesStat.Hot   = _applied > 0;
             SnapshotStat.Value = idle ? "NONE" : "SAVED";
-            SnapshotStat.Note  = idle ? "Written before the first change" : "Survives crash and reboot";
+            SnapshotStat.Note  = idle ? "Saved before any change" : "Survives crash and reboot";
             SnapshotStat.Hot   = !idle;
             string plan = SystemInfo.ActivePowerPlanName();
             PowerStat.Value = plan.ToUpperInvariant();
