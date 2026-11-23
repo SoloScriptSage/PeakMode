@@ -32,6 +32,12 @@
     <EmbeddedResource Include="..\..\assets\peakmode.ico" LogicalName="PeakModeTray.peakmode.ico" />
   </ItemGroup>
 
+  <!-- Bundled OFL fonts (WPF resources). scripts/package.ps1 puts their
+       licenses (Assets/Fonts/*-OFL.txt) in the release zip. -->
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\*.ttf" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="$(CoreDllPath)" Link="PeakModeCore.dll"
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
