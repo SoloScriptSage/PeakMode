@@ -27,6 +27,18 @@ namespace PeakModeTray
                 MainWindow = new Controls.GaugeLabWindow();
                 return;
             }
+            // Main window on a simulated core: nothing is changed on the system
+            if (Array.IndexOf(e.Args, "--window-preview") >= 0)
+            {
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+                var preview = new MainWindow(new ViewModels.BoostViewModel(new PreviewCoreService(), TrayApp.FindConfig()))
+                {
+                    AllowClose = true, Title = "PeakMode (preview, simulated core)",
+                };
+                MainWindow = preview;
+                preview.Show();
+                return;
+            }
 #endif
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -44,7 +56,7 @@ namespace PeakModeTray
             try
             {
                 _core    = new CoreService(Dispatcher);
-                _trayApp = new TrayApp(_core, Shutdown);
+                _trayApp = new TrayApp(_core, ShutdownAll, OpenWindow);
             }
             catch (DllNotFoundException)
             {
@@ -56,6 +68,23 @@ namespace PeakModeTray
             // After startup returns and the dispatcher is pumping
             Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,
                 new Action(() => _trayApp?.OfferLeftoverRestore()));
+        }
+
+        private MainWindow? _window;
+
+        private void OpenWindow()
+        {
+            if (_core == null) return;
+            _window ??= new MainWindow(new ViewModels.BoostViewModel(_core, TrayApp.FindConfig()));
+            _window.Show();
+            if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
+            _window.Activate();
+        }
+
+        private void ShutdownAll()
+        {
+            if (_window != null) { _window.AllowClose = true; _window.Close(); }
+            Shutdown();
         }
 
         protected override void OnExit(ExitEventArgs e)

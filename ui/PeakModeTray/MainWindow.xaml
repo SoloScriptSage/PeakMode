@@ -1,12 +1,271 @@
 ﻿<Window x:Class="PeakModeTray.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PeakModeTray"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        xmlns:c="clr-namespace:PeakModeTray.Controls"
+        xmlns:vm="clr-namespace:PeakModeTray.ViewModels"
+        Title="PeakMode" Width="1180" Height="860" MinWidth="1100" MinHeight="720"
+        Background="{StaticResource DotGridBrush}" WindowStartupLocation="CenterScreen"
+        TextOptions.TextFormattingMode="Ideal">
+    <Window.Resources>
+        <!-- Status tag on a module card -->
+        <Style x:Key="StatusTagBorder" TargetType="Border" BasedOn="{StaticResource TagBorder}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHot}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLive}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StatusTagText" TargetType="TextBlock" BasedOn="{StaticResource TagText}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHot}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource AccentSoftBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLive}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Module card: hot when applied, amber border while live, dim when skipped -->
+        <Style x:Key="ModuleCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="0,0,14,14" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHot}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceHotBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource BorderHotBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLive}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceHotBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Included}" Value="False">
+                    <Setter Property="Opacity" Value="0.5" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StatCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="18" />
+        </Style>
+        <DataTemplate x:Key="StatTemplate" DataType="{x:Type vm:StatViewModel}">
+            <Border Style="{StaticResource StatCard}">
+                <DockPanel LastChildFill="False">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Label}" Style="{StaticResource LabelText}" />
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Value}" Margin="0,10,0,10" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource StatValueText}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Hot}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Note}" Style="{StaticResource MutedText}" FontSize="12" />
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
 
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,1,0" Padding="16,24">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,0,0,24">
+                    <c:BoostGauge Width="40" Height="40" AnimationsOverride="False" IsHitTestVisible="False" />
+                    <TextBlock Text="PEAKMODE" Margin="10,0,0,0" VerticalAlignment="Center"
+                               FontFamily="{StaticResource DisplayFont}" FontWeight="Bold" FontSize="20"
+                               Foreground="{StaticResource TextBrush}" />
+                </StackPanel>
+                <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="12">
+                    <StackPanel>
+                        <TextBlock x:Name="VersionText" Style="{StaticResource MonoText}" Foreground="{StaticResource TextBrush}" />
+                        <TextBlock Text="Free and open source. No account, no limits." Style="{StaticResource MutedText}"
+                                   FontSize="12" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <StackPanel>
+                    <RadioButton Style="{StaticResource NavItem}" Content="Boost" Tag="{x:Static vm:Icons.Boost}"
+                                 IsChecked="True" GroupName="nav" AutomationProperties.Name="Boost" />
+                    <RadioButton Style="{StaticResource NavItem}" Content="Tweaks" Tag="{x:Static vm:Icons.Tweaks}"
+                                 GroupName="nav" IsEnabled="False" AutomationProperties.Name="Tweaks (coming)" />
+                    <RadioButton Style="{StaticResource NavItem}" Content="History" Tag="{x:Static vm:Icons.History}"
+                                 GroupName="nav" IsEnabled="False" AutomationProperties.Name="History (coming)" />
+                    <RadioButton Style="{StaticResource NavItem}" Content="Settings" Tag="{x:Static vm:Icons.Settings}"
+                                 GroupName="nav" IsEnabled="False" AutomationProperties.Name="Settings (coming)" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Boost screen -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="40,32,40,40">
+                <!-- Header -->
+                <DockPanel>
+                    <Border DockPanel.Dock="Right" VerticalAlignment="Center" Padding="14,8" BorderThickness="1"
+                            BorderBrush="{StaticResource BorderStrongBrush}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ChipHot}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                        <Setter Property="Background" Value="{StaticResource SelectedBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ChipAmber}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{StaticResource AmberBorderBrush}" />
+                                        <Setter Property="Background" Value="{StaticResource AmberBgBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding Chip}" FontSize="12">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource LabelText}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ChipHot}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource AccentSoftBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ChipAmber}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <StackPanel>
+                        <TextBlock Text="{Binding ProfileLabel}" Style="{StaticResource EyebrowText}" />
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource H1Text}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Hero + stats -->
+                <Grid Margin="0,28,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" Padding="24">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Button Command="{Binding ToggleCommand}" Width="290" Height="290" Cursor="Hand"
+                                    AutomationProperties.Name="{Binding HeroName}"
+                                    FocusVisualStyle="{StaticResource AccentFocusVisual}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <ContentPresenter />
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <c:BoostGauge Mode="{Binding Mode}" Progress="{Binding Progress}" />
+                            </Button>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0">
+                                <TextBlock Text="{Binding Count}" VerticalAlignment="Bottom">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource CounterText}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CountHot}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding CountSuffix}" Style="{StaticResource LabelText}" FontSize="12"
+                                           Margin="10,0,0,7" VerticalAlignment="Bottom" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Hint}" Style="{StaticResource MutedText}" TextAlignment="Center"
+                                       MaxWidth="300" MinHeight="36" Margin="0,18,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <UniformGrid Grid.Column="2" Columns="2" Rows="2">
+                        <ContentControl Content="{Binding ChangesStat}"  ContentTemplate="{StaticResource StatTemplate}" Margin="0,0,7,7" Focusable="False" />
+                        <ContentControl Content="{Binding SnapshotStat}" ContentTemplate="{StaticResource StatTemplate}" Margin="7,0,0,7" Focusable="False" />
+                        <ContentControl Content="{Binding PowerStat}"    ContentTemplate="{StaticResource StatTemplate}" Margin="0,7,7,0" Focusable="False" />
+                        <ContentControl Content="{Binding TimerStat}"    ContentTemplate="{StaticResource StatTemplate}" Margin="7,7,0,0" Focusable="False" />
+                    </UniformGrid>
+                </Grid>
+
+                <!-- Module cards -->
+                <DockPanel Margin="0,28,0,14">
+                    <TextBlock DockPanel.Dock="Right" Text="Change these on Tweaks" Style="{StaticResource MutedText}"
+                               FontSize="12" VerticalAlignment="Bottom" />
+                    <TextBlock Text="TWEAKS IN THIS PROFILE" Style="{StaticResource H2Text}" />
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding Modules}" Focusable="False" Margin="0,0,-14,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="3" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:ModuleCardViewModel}">
+                            <Border Style="{StaticResource ModuleCard}">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <Path DockPanel.Dock="Left" Data="{Binding Icon}" Width="22" Height="22" Stretch="Uniform"
+                                              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round">
+                                            <Path.Style>
+                                                <Style TargetType="Path">
+                                                    <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Included}" Value="False">
+                                                            <Setter Property="Stroke" Value="{StaticResource DisabledIconBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsHot}" Value="True">
+                                                            <Setter Property="Stroke" Value="{StaticResource AccentBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsLive}" Value="True">
+                                                            <Setter Property="Stroke" Value="{StaticResource AccentBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                        <!-- Read-only here; switches write the profile on Tweaks (commit 7) -->
+                                        <ToggleButton DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}"
+                                                      IsChecked="{Binding Included, Mode=OneWay}" IsEnabled="False"
+                                                      AutomationProperties.Name="{Binding SwitchName}" />
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}"
+                                                   Margin="10,0,10,0" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource MonoText}" Margin="0,10,0,10" />
+                                    <WrapPanel>
+                                        <Border Style="{StaticResource StatusTagBorder}" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTagText}" />
+                                        </Border>
+                                        <Border Style="{StaticResource TagBorder}" BorderBrush="{StaticResource AmberBorderBrush}">
+                                            <Border.Visibility>
+                                                <Binding Path="ShowWarn">
+                                                    <Binding.Converter><BooleanToVisibilityConverter /></Binding.Converter>
+                                                </Binding>
+                                            </Border.Visibility>
+                                            <TextBlock Text="DROPS NETWORK FOR A FEW SECONDS" Style="{StaticResource TagText}"
+                                                       Foreground="{StaticResource AmberBrush}" />
+                                        </Border>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

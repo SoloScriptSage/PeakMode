@@ -1,23 +1,26 @@
-﻿using System.Text;
+﻿using System.ComponentModel;
+using System.Reflection;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace PeakModeTray;
 
-/// <summary>
-/// Interaction logic for MainWindow.xaml
-/// </summary>
+// Main window (Boost, Tweaks, History, Settings), opened from the tray.
+// Closing it only hides it; the tray keeps running.
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    internal MainWindow(object viewModel)
     {
         InitializeComponent();
+        DataContext = viewModel;
+        var v = Assembly.GetExecutingAssembly().GetName().Version;
+        VersionText.Text = v == null ? "PeakMode" : $"v{v.Major}.{v.Minor}.{v.Build}";
+    }
+
+    internal bool AllowClose { get; set; }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!AllowClose) { e.Cancel = true; Hide(); }
+        base.OnClosing(e);
     }
 }

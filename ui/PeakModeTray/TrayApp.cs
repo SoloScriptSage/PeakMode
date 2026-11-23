@@ -28,10 +28,13 @@ namespace PeakModeTray
         private static readonly string StateDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PeakMode");
 
-        public TrayApp(CoreService core, Action shutdown)
+        private readonly Action _openWindow;
+
+        public TrayApp(CoreService core, Action shutdown, Action openWindow)
         {
             _core       = core;
             _shutdown   = shutdown;
+            _openWindow = openWindow;
             _configPath = FindConfig();
 
             (_iconActive, _iconIdle) = LoadIcons();
@@ -44,6 +47,11 @@ namespace PeakModeTray
             _toggleItem = new ToolStripMenuItem("Activate", null, OnToggle);
 
             var menu = new ContextMenuStrip();
+            menu.Items.Add(new ToolStripMenuItem("Open PeakMode", null, (_, _) => _openWindow())
+            {
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            });
+            menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(_statusItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(_toggleItem);
@@ -212,7 +220,7 @@ namespace PeakModeTray
 
         // Release layout: <exe dir>\config\peakmode.json
         // Dev layout: walk up from bin\Release\net8.0-windows\... to the repo's config\
-        private static string? FindConfig()
+        internal static string? FindConfig()
         {
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
             for (int i = 0; i < 7 && dir != null; i++, dir = dir.Parent)
