@@ -53,13 +53,13 @@
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Padding" Value="16,6" />
         </Style>
         <DataTemplate x:Key="StatTemplate" DataType="{x:Type vm:StatViewModel}">
             <Border Style="{StaticResource StatCard}">
-                <StackPanel>
+                <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="{Binding Label}" Style="{StaticResource LabelText}" />
-                    <TextBlock Text="{Binding Value}" Margin="0,6,0,4" FontSize="24" TextTrimming="CharacterEllipsis"
+                    <TextBlock Text="{Binding Value}" Margin="0,3,0,2" FontSize="24" TextTrimming="CharacterEllipsis"
                                ToolTip="{Binding Value}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource StatValueText}">
@@ -121,7 +121,7 @@
             <Grid Grid.Column="1" Margin="36,24">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="100*" MinHeight="230" MaxHeight="430" />
+                    <RowDefinition Height="100*" MinHeight="180" MaxHeight="430" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -213,11 +213,20 @@
                                        MaxWidth="380" MinHeight="34" Margin="0,6,0,0" />
                         </Grid>
                     </Border>
-                    <UniformGrid Grid.Column="2" Columns="2" Rows="2" VerticalAlignment="Top">
-                        <ContentControl Content="{Binding ChangesStat}"  ContentTemplate="{StaticResource StatTemplate}" Margin="0,0,7,7" Focusable="False" />
-                        <ContentControl Content="{Binding SnapshotStat}" ContentTemplate="{StaticResource StatTemplate}" Margin="7,0,0,7" Focusable="False" />
-                        <ContentControl Content="{Binding PowerStat}"    ContentTemplate="{StaticResource StatTemplate}" Margin="0,7,7,0" Focusable="False" />
-                        <ContentControl Content="{Binding TimerStat}"    ContentTemplate="{StaticResource StatTemplate}" Margin="7,7,0,0" Focusable="False" />
+                    <!-- Stretches to the hero's height; card content centered -->
+                    <UniformGrid Grid.Column="2" Columns="2" Rows="2">
+                        <UniformGrid.Resources>
+                            <Style TargetType="ContentControl">
+                                <Setter Property="Focusable" Value="False" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                <Setter Property="ContentTemplate" Value="{StaticResource StatTemplate}" />
+                            </Style>
+                        </UniformGrid.Resources>
+                        <ContentControl Content="{Binding ChangesStat}"  Margin="0,0,7,7" />
+                        <ContentControl Content="{Binding SnapshotStat}" Margin="7,0,0,7" />
+                        <ContentControl Content="{Binding PowerStat}"    Margin="0,7,7,0" />
+                        <ContentControl Content="{Binding TimerStat}"    Margin="7,7,0,0" />
                     </UniformGrid>
                 </Grid>
 
@@ -258,10 +267,11 @@
                                             </Path.Style>
                                         </Path>
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}"
-                                                   Margin="10,0,0,0" VerticalAlignment="Center" ToolTip="{Binding Name}" />
+                                                   TextWrapping="Wrap" TextTrimming="None"
+                                                   Margin="10,0,0,0" VerticalAlignment="Center" />
                                     </DockPanel>
                                     <TextBlock Text="{Binding Detail}" Style="{StaticResource MonoText}" Margin="0,8,0,8"
-                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}" />
+                                               TextWrapping="Wrap" />
                                     <DockPanel>
                                         <!-- Read-only here; switches write the profile on Tweaks (commit 7) -->
                                         <ToggleButton DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}"
