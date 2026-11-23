@@ -163,7 +163,7 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | PCs without an NVIDIA GPU | **Untested** | | Module is skipped when NVAPI is unavailable |
 | Windows 10 | **Untested** | | |
 | GitHub Actions build, self-test and packaging | Yes | | [Run 45060641184](https://github.com/SoloScriptSage/PeakMode/actions/runs/45060641184) on windows-latest, including the state folder ACL self-test |
-| GitHub Actions release on a `v*` tag | **Untested** | | No tag pushed yet |
+| GitHub Actions release on a `v*` tag | Yes | | [Run 45062573365](https://github.com/SoloScriptSage/PeakMode/actions/runs/45062573365) published the v0.1.0 release |
 
 ---
 
