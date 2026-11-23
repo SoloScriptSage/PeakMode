@@ -29,6 +29,9 @@ public:
     // CPUs only the highest efficiency class (P-cores) is included.
     static DWORD_PTR physicalCoreMask();
 
+    // Active power scheme as "{GUID}" (read only), "" if unknown.
+    static std::string activeSchemeGuid();
+
     static void dump();   // print current state (diagnostics)
 
 private:

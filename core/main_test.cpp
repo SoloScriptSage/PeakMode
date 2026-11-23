@@ -11,6 +11,7 @@
 #include "engine/Orchestrator.h"
 #include "engine/ProfileManager.h"
 #include "engine/Registry.h"
+#include "engine/SessionLog.h"
 #include "engine/Snapshot.h"
 #include "engine/Utf8.h"
 #include "modules/InterruptTweaks.h"
@@ -289,9 +290,153 @@ static void testSteps() {
     CHECK(orch.restore() == PM_ERR_NOTHING && cev.empty());     // callback removed
 
     Snapshot::setStateDirForTests(L"");
-    std::wstring log = dir + L"\\peakmode.log";
-    DeleteFileW(log.c_str());
-    RemoveDirectoryW(dir.c_str());
+    for (const wchar_t* f : { L"\\peakmode.log", L"\\sessions.jsonl", L"\\sessions.1.jsonl" })
+        DeleteFileW((dir + f).c_str());
+    CHECK(RemoveDirectoryW(dir.c_str()));
+}
+
+// Session log: format, rotation, bad lines, and the events written by a
+// real activate/restore with every tweak section off (nothing is changed).
+static void testSessions() {
+    using namespace PeakMode;
+    printf("[selftest] session log\n");
+
+    wchar_t tmp[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp);
+    std::wstring dir = std::wstring(tmp) + L"peakmode-sessiontest-" +
+                       std::to_wstring(GetCurrentProcessId());
+    CreateDirectoryW(dir.c_str(), nullptr);
+    Snapshot::setStateDirForTests(dir);
+    auto clear = [&] {
+        DeleteFileW(Snapshot::stateFile(SessionLog::kFile).c_str());
+        DeleteFileW(Snapshot::stateFile(SessionLog::kOldFile).c_str());
+    };
+    clear();
+    const unsigned long pid = GetCurrentProcessId();
+
+    // Format
+    auto all = SessionLog::readAll();
+    CHECK(all.is_array() && all.empty());
+    CHECK(SessionLog::begin("s1", "gaming"));
+    CHECK(SessionLog::active("s1", Snapshot::Entry::array({ { { "kind", "t" } } }), "{G}"));
+    CHECK(SessionLog::end("s1", "tray", "ok", 1, 0));
+    all = SessionLog::readAll();
+    CHECK(all.size() == 3);
+    if (all.size() == 3) {
+        CHECK(all[0]["type"] == "begin" && all[0]["profile"] == "gaming");
+        CHECK(all[1]["type"] == "active" && all[1]["entries"].size() == 1 &&
+              all[1]["powerScheme"] == "{G}");
+        CHECK(all[2]["type"] == "end" && all[2]["reason"] == "tray" && all[2]["result"] == "ok" &&
+              all[2]["restored"] == 1 && all[2]["failed"] == 0);
+        for (const auto& ev : all) {
+            CHECK(ev["v"] == 1 && ev["session"] == "s1" && ev["pid"] == pid);
+            CHECK(ev["time"].is_string() && ev["time"].get<std::string>().size() == 20);
+        }
+    }
+
+    // Unreadable lines are skipped, later events still read
+    CHECK(Snapshot::appendToStateFile(SessionLog::kFile, "garbage\n{\"no\":1}\n\n{ broken\r\n"));
+    CHECK(SessionLog::end("s1", "tray", "ok", 1, 0));
+    CHECK(SessionLog::readAll().size() == 4);
+
+    // Rotation keeps one old copy, read before the current file
+    clear();
+    SessionLog::setMaxBytesForTests(1);
+    CHECK(SessionLog::begin("A", "p"));
+    CHECK(SessionLog::begin("B", "p"));
+    all = SessionLog::readAll();
+    CHECK(all.size() == 2 && all[0]["session"] == "A" && all[1]["session"] == "B");
+    CHECK(SessionLog::begin("C", "p"));
+    all = SessionLog::readAll();
+    CHECK(all.size() == 2 && all[0]["session"] == "B" && all[1]["session"] == "C");
+    SessionLog::setMaxBytesForTests(0);
+    clear();
+
+    CHECK(std::string(Orchestrator::reasonName(PM_REASON_ROLLBACK)) == "rollback");
+    CHECK(std::string(Orchestrator::reasonName(99)) == "unknown");
+    CHECK(std::string(Orchestrator::reasonName(-1)) == "unknown");
+
+    // Real activate + restore, no tweak section enabled
+    std::wstring cfg = dir + L"\\selftest-config.json";
+    {
+        FILE* f = _wfopen(cfg.c_str(), L"wb");
+        fputs(R"({ "name": "selftest", "windowsTweaks": false, "nvidiaTweaks": false,
+                   "interruptTweaks": false })", f);
+        fclose(f);
+    }
+    auto& orch = Orchestrator::instance();
+    std::vector<Ev> cev;
+    Orchestrator_SetProgressCallback(&orch, &collectEvent, &cev);
+    CHECK(orch.activate(Narrow(cfg)) == PM_OK);
+    CHECK((cev == std::vector<Ev>{ { PM_EV_DONE, -1, PM_OK, 0 } }));
+    CHECK(orch.state() == ProfileState::ACTIVE);
+    Snapshot::Entry doc;
+    std::string err;
+    std::string sid;
+    CHECK(Snapshot::load(doc, err));
+    sid = Snapshot::sessionIdOf(doc);
+    CHECK(!sid.empty() && sid == doc.value("sessionId", std::string()));
+    CHECK(sid.size() > 2 && sid.substr(sid.rfind('-') + 1) == std::to_string(pid));
+    all = SessionLog::readAll();
+    CHECK(all.size() == 2);
+    if (all.size() == 2) {
+        CHECK(all[0]["type"] == "begin" && all[0]["session"] == sid && all[0]["profile"] == "selftest");
+        CHECK(all[1]["type"] == "active" && all[1]["session"] == sid && all[1]["entries"].empty());
+        CHECK(all[1]["powerScheme"].is_string());
+    }
+    cev.clear();
+    CHECK(Orchestrator_RestoreWithReason(&orch, PM_REASON_WINDOW) == PM_OK);
+    CHECK((cev == std::vector<Ev>{ { PM_EV_RESTORE_BEGIN, -1, 0, 0 }, { PM_EV_DONE, -1, PM_OK, 0 } }));
+    CHECK(!Snapshot::exists() && orch.state() == ProfileState::IDLE);
+    all = SessionLog::readAll();
+    CHECK(all.size() == 3);
+    if (all.size() == 3) {
+        CHECK(all[2]["type"] == "end" && all[2]["session"] == sid && all[2]["reason"] == "window" &&
+              all[2]["result"] == "ok" && all[2]["restored"] == 0 && all[2]["failed"] == 0);
+    }
+    Orchestrator_SetProgressCallback(&orch, nullptr, nullptr);
+
+    // Leftover v0.1.0 snapshot (no sessionId) restored after a "crash": the
+    // id comes from createdUtc + pid, the end event carries our pid
+    {
+        FILE* f = _wfopen(Snapshot::filePath().c_str(), L"wb");
+        fputs(R"({ "version": 1, "createdUtc": "2026-01-02T03:04:05Z", "profile": "default",
+                   "pid": 4242, "state": "active", "entries": [ { "kind": "selftest" } ] })", f);
+        fclose(f);
+    }
+    CHECK(orch.state() == ProfileState::RESTORE_PENDING);
+    CHECK(orch.restore(PM_REASON_CRASH_PROMPT) == PM_ERR_PARTIAL);
+    all = SessionLog::readAll();
+    CHECK(all.size() == 4);
+    if (all.size() == 4) {
+        CHECK(all[3]["session"] == "2026-01-02T03:04:05Z-4242" && all[3]["reason"] == "crashPrompt" &&
+              all[3]["result"] == "partial" && all[3]["failed"] == 1 && all[3]["pid"] == pid);
+    }
+
+    // A corrupt snapshot has no session to attach an end event to
+    {
+        FILE* f = _wfopen(Snapshot::filePath().c_str(), L"wb");
+        fputs("{ broken", f);
+        fclose(f);
+    }
+    CHECK(orch.restore(PM_REASON_BANNER) == PM_ERR_PARTIAL);
+    CHECK(SessionLog::readAll().size() == 4);
+    DeleteFileW(Snapshot::filePath().c_str());
+
+    // C export: same JSON, two-call pattern, truncation
+    int len = PeakMode_ReadSessions(nullptr, 0);
+    std::vector<char> buf(static_cast<size_t>(len) + 1);
+    CHECK(PeakMode_ReadSessions(buf.data(), static_cast<int>(buf.size())) == len);
+    auto parsed = nlohmann::json::parse(buf.data(), nullptr, false);
+    CHECK(!parsed.is_discarded() && parsed == SessionLog::readAll());
+    char tiny[4];
+    CHECK(PeakMode_ReadSessions(tiny, sizeof(tiny)) == len && strlen(tiny) == 3);
+
+    Snapshot::setStateDirForTests(L"");
+    for (const wchar_t* f : { L"\\peakmode.log", L"\\sessions.jsonl", L"\\sessions.1.jsonl",
+                              L"\\snapshot.json", L"\\selftest-config.json" })
+        DeleteFileW((dir + f).c_str());
+    CHECK(RemoveDirectoryW(dir.c_str()));
 }
 
 static bool isElevated();
@@ -371,6 +516,7 @@ static int runSelftest(const char* configPath) {
     testShippedConfig(configPath);
     testSnapshot();
     testSteps();
+    testSessions();
     testStateDirAcl();
     testRegistryAllowlist();
     printf(g_failures ? "[selftest] %d FAILURE(S)\n" : "[selftest] all passed\n", g_failures);
@@ -447,7 +593,7 @@ int main(int argc, char* argv[]) {
     }
     if (cmd == "restore") {
         printf("=== PeakMode: RESTORING ===\n");
-        return report(orch.restore());
+        return report(orch.restore(PeakMode::PM_REASON_CLI));
     }
     if (cmd == "activate") {
         printf("=== PeakMode: ACTIVATING (no auto-restore) ===\n");
@@ -461,5 +607,5 @@ int main(int argc, char* argv[]) {
     if (rc != PeakMode::PM_OK) return report(rc);
     printf("\nPress Enter to restore and exit...\n");
     getchar();
-    return report(orch.restore());
+    return report(orch.restore(PeakMode::PM_REASON_CLI));
 }

@@ -16,6 +16,7 @@ add_library(PeakModeCore SHARED
     engine/Log.cpp
     engine/ProfileManager.cpp
     engine/Registry.cpp
+    engine/SessionLog.cpp
     engine/Snapshot.cpp
     engine/Orchestrator.cpp
     modules/WindowsTweaks.cpp

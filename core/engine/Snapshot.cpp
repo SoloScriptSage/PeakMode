@@ -149,6 +149,17 @@ std::string nowUtc() {
     return buf;
 }
 
+// Session id: UTC time with milliseconds plus pid, unique per activation.
+std::string newSessionId() {
+    SYSTEMTIME st;
+    GetSystemTime(&st);
+    char buf[48];
+    snprintf(buf, sizeof(buf), "%04d%02d%02dT%02d%02d%02d.%03dZ-%lu",
+             st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond,
+             st.wMilliseconds, GetCurrentProcessId());
+    return buf;
+}
+
 } // namespace
 
 // ── state dir ────────────────────────────────────────────────────────────────
@@ -237,8 +248,40 @@ std::string Snapshot::stateDirError() {
 }
 
 std::wstring Snapshot::filePath() {
+    return stateFile(L"snapshot.json");
+}
+
+std::wstring Snapshot::stateFile(const wchar_t* name) {
     std::wstring dir = stateDir();
-    return dir.empty() ? std::wstring() : dir + L"\\snapshot.json";
+    return dir.empty() ? std::wstring() : dir + L"\\" + name;
+}
+
+bool Snapshot::appendToStateFile(const wchar_t* name, const std::string& data) {
+    std::lock_guard<std::recursive_mutex> lock(g_mutex);
+    std::wstring path = stateFile(name);
+    if (path.empty()) return false;
+    SecDesc s;
+    SECURITY_ATTRIBUTES sa = s.attrs();
+    HANDLE h = CreateFileW(path.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ,
+                           (!g_testMode && s.sd) ? &sa : nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    DWORD written = 0;
+    BOOL ok = WriteFile(h, data.data(), static_cast<DWORD>(data.size()), &written, nullptr)
+              && written == data.size()
+              && FlushFileBuffers(h);
+    CloseHandle(h);
+    return ok != FALSE;
+}
+
+std::string Snapshot::sessionIdOf(const Entry& doc) {
+    if (doc.contains("sessionId") && doc["sessionId"].is_string())
+        return doc["sessionId"].get<std::string>();
+    if (doc.contains("createdUtc") && doc["createdUtc"].is_string() &&
+        doc.contains("pid") && doc["pid"].is_number_unsigned())
+        return doc["createdUtc"].get<std::string>() + "-" +
+               std::to_string(doc["pid"].get<unsigned long>());
+    return {};
 }
 
 void Snapshot::setStateDirForTests(const std::wstring& dir) {
@@ -272,6 +315,7 @@ bool Snapshot::begin(const std::string& profileName, std::string& error) {
         { "createdUtc", nowUtc() },
         { "profile",    profileName },
         { "pid",        GetCurrentProcessId() },
+        { "sessionId",  newSessionId() },
         { "state",      "applying" },
         { "entries",    json::array() },
     };
