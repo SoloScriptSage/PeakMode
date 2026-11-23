@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PeakMode app: tweaks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#07080C}
+a{color:#FF8FB5;text-decoration:none}a:hover{color:#FFC2D6}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+.pm-grid{background-image:radial-gradient(#1A1D27 1px,transparent 1px);background-size:22px 22px}
+@keyframes pmPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes pmGlow{0%,100%{filter:drop-shadow(0 0 22px rgba(255,61,127,.45))}50%{filter:drop-shadow(0 0 38px rgba(255,61,127,.8))}}
+@keyframes pmShake{0%,100%{transform:translate(0,0)}25%{transform:translate(.6px,-.6px)}75%{transform:translate(-.6px,.6px)}}
+.pm-pulse{animation:pmPulse .7s ease-in-out infinite}
+.pm-glow{animation:pmGlow 1.8s ease-in-out infinite}
+.pm-shake{animation:pmShake .12s linear infinite}
+@keyframes pmRev{0%{transform:rotate(0)}10%{transform:rotate(19deg)}18%{transform:rotate(9deg)}28%{transform:rotate(23deg)}40%{transform:rotate(3deg)}52%{transform:rotate(17deg)}62%{transform:rotate(-3deg)}74%{transform:rotate(21deg)}86%{transform:rotate(6deg)}100%{transform:rotate(0)}}
+@keyframes pmFlicker{0%,100%{opacity:1}30%{opacity:.5}45%{opacity:.95}70%{opacity:.6}}
+@keyframes pmVibe{0%,100%{transform:translate(0,0)}50%{transform:translate(.4px,.3px)}}
+.pm-rev{animation:pmRev 1.4s ease-in-out infinite}
+.pm-flicker{animation:pmFlicker .35s linear infinite}
+.pm-active{animation:pmGlow 1.8s ease-in-out infinite,pmVibe .09s linear infinite}
+</style>
+</helmet>
+<div class="pm-grid" style="width: 100%; min-height: 800px; box-sizing: border-box; background-color: #07080C; display: flex; flex-wrap: wrap; font-family: Inter, sans-serif; color: #F3F1EC">
+  <nav style="flex: 1 1 220px; max-width: 260px; min-width: 200px; box-sizing: border-box; padding: 24px 16px; background: #0B0C12; border-right: 1px solid #1C1F2A; display: flex; flex-direction: column; gap: 6px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px">
+      <img src="/_blob/ee38bdb92c9616d43345f4198bbe32b3" alt="" style="width: 40px; height: 40px">
+      <div style="font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 2px">PEAKMODE</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+      <a href="{{n.href}}" style="{{n.style}}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.icon}}"></path></svg>
+        <span>{{n.label}}</span>
+      </a>
+    </sc-for>
+    <div style="flex-grow: 1; min-height: 40px"></div>
+    <div style="padding: 12px; border: 1px solid #1C1F2A; border-radius: 8px; font-size: 12px; color: #A0A6AF; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-family: 'JetBrains Mono', monospace; color: #F3F1EC">v0.1.0</span>
+      <span>Free and open source. No account, no limits.</span>
+      <a href="https://github.com/SoloScriptSage/PeakMode">GitHub</a>
+    </div>
+  </nav>
+    <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 40px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+      <div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FF8FB5; letter-spacing: 2px">WHAT PEAKMODE CHANGES</div>
+        <h1 style="margin: 4px 0 0; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 40px; letter-spacing: 1px">TWEAKS</h1>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 16px; background: #1A0E16; color: #FF8FB5; border: 1px solid #FF3D7F">GAMING</button>
+        <button style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 16px; background: transparent; color: #A0A6AF; border: 1px dashed #2A2E3A">+ NEW PROFILE</button>
+      </div>
+    </div>
+    <div style="display: flex; gap: 14px; flex-wrap: wrap">
+      <sc-for list="{{summary}}" as="s" hint-placeholder-count="3">
+        <div style="flex: 1 1 180px; padding: 14px 18px; background: #0D0F16; border: 1px solid #1C1F2A; display: flex; align-items: baseline; gap: 10px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+          <span style="{{s.style}}">{{s.value}}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1.5px; color: #A0A6AF">{{s.label}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <sc-for list="{{mods}}" as="m" hint-placeholder-count="7">
+        <div style="{{m.cardStyle}}">
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{m.iconColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.icon}}"></path></svg>
+            <div style="display: flex; flex-direction: column; gap: 3px; flex: 1 1 220px; min-width: 0">
+              <span style="font-weight: 600; font-size: 16px">{{m.name}}</span>
+              <span style="font-size: 13px; color: #A0A6AF">{{m.desc}}</span>
+            </div>
+            <span style="{{m.riskStyle}}">{{m.risk}}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #A0A6AF; min-width: 70px; text-align: right">{{m.count}}</span>
+            <button onClick="{{m.expand}}" aria-label="{{m.expandAria}}" aria-expanded="{{m.open}}" style="width: 36px; height: 36px; background: transparent; border: 1px solid #2A2E3A; color: #A0A6AF; display: flex; align-items: center; justify-content: center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{m.chevron}}"><path d="M6 9l6 6 6-6"></path></svg>
+            </button>
+            <button onClick="{{m.flip}}" aria-label="{{m.aria}}" style="{{m.track}}"><span style="{{m.knob}}"></span></button>
+          </div>
+          <sc-if value="{{m.open}}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #1C1F2A; display: flex; flex-direction: column; gap: 8px">
+              <sc-for list="{{m.lines}}" as="l" hint-placeholder-count="2">
+                <div style="display: flex; gap: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; flex-wrap: wrap">
+                  <span style="color: #6B7180; min-width: 70px">{{l.k}}</span>
+                  <span style="color: #D6D3DE; flex: 1 1 300px">{{l.v}}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{m.hasInput}}" hint-placeholder-val="{{ false }}">
+                <label style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 12px; color: #A0A6AF; max-width: 360px">Target process
+                  <input placeholder="game.exe" style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 10px 12px; background: #07080C; color: #F3F1EC; border: 1px solid #2A2E3A; outline: none">
+                </label>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 12px; color: #6B7180">Every tweak is recorded in the snapshot before it runs and is undone by Restore.</div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { off: { irq: true, proc: true }, open: { net: true } }; }
+  renderVals() {
+    const { off, open } = this.state;
+    const NI = { boost: 'M13 2L4 14h7l-1 8 9-12h-7z', tweaks: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12', hist: 'M3 12a9 9 0 103-6.7L3 8M3 3v5h5M12 7v5l3 2', set: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12h2M3 12h2M12 3v2M12 19v2' };
+    const nav = [['Boost','App.dc.html','boost'],['Tweaks','Tweaks.dc.html','tweaks'],['History','History.dc.html','hist'],['Settings','#settings','set']].map(n => ({
+      label: n[0], href: n[1], icon: NI[n[2]],
+      style: 'display: flex; align-items: center; gap: 12px; padding: 11px 12px; font-size: 14px; font-weight: 500; ' + (n[0] === 'Tweaks' ? 'color: #F3F1EC; background: #1A0E16; border-left: 3px solid #FF3D7F' : 'color: #A0A6AF; border-left: 3px solid transparent')
+    }));
+
+    const I = { power: 'M13 2L4 14h7l-1 8 9-12h-7z', net: 'M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M12 19.5h.01', svc: 'M4 6h16M4 12h16M4 18h10',
+      timer: 'M12 8v4l3 2M12 21a9 9 0 100-18 9 9 0 000 18z', proc: 'M4 4h16v16H4zM9 9h6v6H9z', gpu: 'M3 7h18v10H3zM7 17v3M17 17v3M8 12h3', irq: 'M4 12h4l2-6 4 12 2-6h4' };
+    const defs = [
+      { id: 'power', name: 'Power plan', desc: 'Switch to High performance while boosted', risk: 'SAFE', n: 1,
+        lines: [['changes','active power scheme → High performance'],['restore','previous scheme becomes active again']] },
+      { id: 'net', name: 'Nagle off', desc: 'Send small network packets immediately', risk: 'SAFE', n: 12,
+        lines: [['changes','TcpAckFrequency = 1, TCPNoDelay = 1'],['where','each of your 6 network interfaces'],['restore','values deleted or reset to what they were']] },
+      { id: 'svc', name: 'Background services', desc: 'Pause disk-heavy services during play', risk: 'SAFE', n: 2,
+        lines: [['changes','SysMain and Windows Search stopped'],['restore','started again if they were running']] },
+      { id: 'timer', name: 'Timer resolution', desc: 'Finer system timer while boosted', risk: 'SAFE', n: 0,
+        lines: [['changes','requests 0.5 ms timer resolution'],['restore','request released, Windows default returns']] },
+      { id: 'proc', name: 'Process priority', desc: 'Raise priority and pin CPU cores for one game', risk: 'SAFE', n: 0, input: true,
+        lines: [['changes','priority class and CPU affinity of the target process'],['restore','original priority and affinity set back']] },
+      { id: 'gpu', name: 'NVIDIA driver', desc: 'Tune the driver profile through NVAPI', risk: 'SAFE', n: 4,
+        lines: [['changes','4 settings in the NVIDIA driver profile'],['restore','each setting set back to its saved value'],['needs','an NVIDIA GPU, skipped otherwise']] },
+      { id: 'irq', name: 'Interrupts and NIC', desc: 'IRQ affinity and network adapter buffers', risk: 'NETWORK BLIP', n: 0, warn: true,
+        lines: [['changes','interrupt affinity and adapter properties'],['note','the adapter restarts on boost and on restore'],['effect','network drops for a few seconds each time']] }
+    ];
+    let total = 0, on = 0;
+    const mods = defs.map(d => {
+      const enabled = !off[d.id]; if (enabled) { on++; total += d.n; }
+      const isOpen = !!open[d.id];
+      return {
+        name: d.name, desc: d.desc, icon: I[d.id], risk: d.risk, open: isOpen, hasInput: !!d.input,
+        count: d.n ? d.n + (d.n === 1 ? ' value' : ' values') : 'runtime',
+        lines: d.lines.map(l => ({ k: l[0], v: l[1] })),
+        iconColor: enabled ? '#FF3D7F' : '#4A4F5C',
+        riskStyle: 'font-family: JetBrains Mono, monospace; font-size: 10px; letter-spacing: 1px; padding: 4px 8px; border: 1px solid ' + (d.warn ? '#5A4520' : '#1F3A2B') + '; color: ' + (d.warn ? '#FFB020' : '#5BD18B'),
+        cardStyle: 'padding: 16px 18px; background: ' + (enabled ? '#0D0F16' : '#0A0B10') + '; border: 1px solid ' + (isOpen ? '#3A2030' : '#1C1F2A') + '; opacity: ' + (enabled ? 1 : 0.6) + '; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)',
+        chevron: 'transition: transform .2s; transform: rotate(' + (isOpen ? 180 : 0) + 'deg)',
+        expandAria: (isOpen ? 'Hide details for ' : 'Show details for ') + d.name,
+        aria: (enabled ? 'Skip ' : 'Include ') + d.name,
+        track: 'width: 44px; height: 24px; border-radius: 12px; border: none; position: relative; flex-shrink: 0; background: ' + (enabled ? '#FF3D7F' : '#2A2E3A'),
+        knob: 'position: absolute; top: 3px; width: 18px; height: 18px; border-radius: 9px; background: #F3F1EC; transition: left .2s; left: ' + (enabled ? '23px' : '3px'),
+        flip: () => this.setState({ off: Object.assign({}, off, { [d.id]: enabled }) }),
+        expand: () => this.setState({ open: Object.assign({}, open, { [d.id]: !isOpen }) })
+      };
+    });
+    const big = 'font-family: Chakra Petch, sans-serif; font-weight: 700; font-size: 26px; color: #F3F1EC';
+    const summary = [
+      { value: on + ' / ' + defs.length, label: 'MODULES ON', style: big },
+      { value: String(total), label: 'SETTINGS SAVED BEFORE BOOST', style: big.replace('#F3F1EC', '#FF3D7F') },
+      { value: off.irq ? 'NONE' : '1', label: 'NEED A NETWORK RESTART', style: big.replace('#F3F1EC', off.irq ? '#F3F1EC' : '#FFB020') }
+    ];
+    return { nav, mods, summary };
+  }
+}
+</script>
+</body>
+</html>
