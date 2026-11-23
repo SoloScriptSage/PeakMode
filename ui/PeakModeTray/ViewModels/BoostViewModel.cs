@@ -104,7 +104,14 @@ namespace PeakModeTray.ViewModels
         public bool ChipHot   => Mode is GaugeMode.Applying or GaugeMode.Active or GaugeMode.Restoring;
         public bool ChipAmber => Mode == GaugeMode.RestorePending;
         public bool ChipBusy  => Mode is GaugeMode.Applying or GaugeMode.Restoring;
-        public string Hint => Mode switch
+        // Last two words joined by a no-break space: never a lone word on the last line
+        public string Hint => NoOrphan(HintText);
+        private static string NoOrphan(string s)
+        {
+            int i = s.LastIndexOf(' ');
+            return i > 0 ? s[..i] + ' ' + s[(i + 1)..] : s;
+        }
+        private string HintText => Mode switch
         {
             GaugeMode.Applying => "Applying one module at a time. Each change is written to the snapshot first.",
             GaugeMode.Active => "Restore puts every setting back exactly as it was, in reverse order.",
