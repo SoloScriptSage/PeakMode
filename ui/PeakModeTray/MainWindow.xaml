@@ -174,14 +174,19 @@
                     </Grid.ColumnDefinitions>
                     <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1" Padding="16,14">
-                        <Grid>
+                        <!-- Gauge scales with the space it gets, up to 290 px. Counter
+                             and hint go under it, or beside it when that gives a bigger
+                             gauge (wide, short card); see OnHeroSizeChanged. -->
+                        <Grid x:Name="HeroGrid" SizeChanged="OnHeroSizeChanged">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <!-- Gauge scales with the space it gets, up to 290 px -->
-                            <Viewbox MaxWidth="290" MaxHeight="290" Stretch="Uniform">
+                            <Viewbox x:Name="HeroGauge" MaxWidth="290" MaxHeight="290" Stretch="Uniform">
                                 <Button Command="{Binding ToggleCommand}" Width="290" Height="290" Cursor="Hand"
                                         AutomationProperties.Name="{Binding HeroName}"
                                         FocusVisualStyle="{StaticResource AccentFocusVisual}">
@@ -193,7 +198,8 @@
                                     <c:BoostGauge Mode="{Binding Mode}" Progress="{Binding Progress}" />
                                 </Button>
                             </Viewbox>
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                            <StackPanel x:Name="HeroText" Grid.Row="1" Grid.ColumnSpan="2">
+                            <StackPanel x:Name="CounterRow" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
                                 <TextBlock Text="{Binding Count}" VerticalAlignment="Bottom">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource CounterText}">
@@ -208,9 +214,10 @@
                                 <TextBlock Text="{Binding CountSuffix}" Style="{StaticResource LabelText}" FontSize="12"
                                            Margin="10,0,0,7" VerticalAlignment="Bottom" />
                             </StackPanel>
-                            <TextBlock Grid.Row="2" Text="{Binding Hint}" Style="{StaticResource MutedText}"
+                            <TextBlock x:Name="HintText" Text="{Binding Hint}" Style="{StaticResource MutedText}"
                                        TextAlignment="Center" HorizontalAlignment="Center"
-                                       MaxWidth="380" MinHeight="34" Margin="0,6,0,0" />
+                                       MaxWidth="340" MinHeight="34" Margin="0,6,0,0" />
+                            </StackPanel>
                         </Grid>
                     </Border>
                     <!-- Stretches to the hero's height; card content centered -->
