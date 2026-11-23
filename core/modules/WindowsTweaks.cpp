@@ -401,6 +401,11 @@ bool WindowsTweaks::restoreEntry(const Snapshot::Entry& e, std::string& error) {
     return false;
 }
 
+std::string WindowsTweaks::activeSchemeGuid() {
+    GUID g{};
+    return activeScheme(g) ? guidToString(g) : std::string();
+}
+
 void WindowsTweaks::dump() {
     GUID g{};
     if (activeScheme(g)) Log("power.active = %s", guidToString(g).c_str());

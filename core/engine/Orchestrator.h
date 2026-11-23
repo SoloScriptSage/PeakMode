@@ -63,6 +63,20 @@ enum StepStatus : int {
     PM_STEP_FAILED  = 2,   // threw; activation is rolled back
 };
 
+// Who asked for a restore; stored as "reason" in the session log.
+// Keep in sync with ui/PeakModeTray/PeakModeCore.cs.
+enum RestoreReason : int {
+    PM_REASON_UNKNOWN     = 0,   // Orchestrator_Restore (no reason given)
+    PM_REASON_TRAY        = 1,   // tray click or menu
+    PM_REASON_WINDOW      = 2,   // main window
+    PM_REASON_EXIT        = 3,   // app exit while active
+    PM_REASON_SESSION_END = 4,   // logoff / shutdown
+    PM_REASON_CRASH_PROMPT= 5,   // "restore your settings?" prompt on start
+    PM_REASON_BANNER      = 6,   // History restore-pending banner
+    PM_REASON_CLI         = 7,   // peakmode_test
+    PM_REASON_ROLLBACK    = 8,   // internal: activation failed and was undone
+};
+
 class Orchestrator {
 public:
     using ProgressFn = void(__cdecl*)(int event, int step, int status, int entries, void* user);
@@ -78,7 +92,9 @@ public:
     static Orchestrator& instance();
 
     int          activate(const std::string& utf8ProfilePath);
-    int          restore();      // this session's activation OR a leftover snapshot
+    // This session's activation OR a leftover snapshot. `reason` is a
+    // RestoreReason (out of range = unknown).
+    int          restore(int reason = PM_REASON_UNKNOWN);
     ProfileState state() const;
     std::string  lastError() const;
 
@@ -95,12 +111,13 @@ public:
     static void        runSteps(const std::vector<StepDef>& steps, const Emit& emit);
     static const char* stepName(int step);          // "" if out of range
     static int         stepOfEntry(const Snapshot::Entry& e);   // -1 if unknown
+    static const char* reasonName(int reason);       // "unknown" if out of range
 
 private:
     Orchestrator() = default;
     int  fail(int code, const std::string& msg);
     int  activateImpl(const std::string& profilePath, int& entries);
-    int  restoreImpl(int& restored);
+    int  restoreImpl(int reason, int& restored);
     void emit(int event, int step, int status, int entries) const;
 
     mutable std::recursive_mutex m_mutex;
@@ -122,6 +139,8 @@ extern "C" {
     __declspec(dllexport) int  Orchestrator_Activate(PeakMode::Orchestrator* inst,
                                                      const char* profilePathUtf8);
     __declspec(dllexport) int  Orchestrator_Restore(PeakMode::Orchestrator* inst);
+    __declspec(dllexport) int  Orchestrator_RestoreWithReason(PeakMode::Orchestrator* inst,
+                                                              int reason);
     __declspec(dllexport) int  Orchestrator_GetState(PeakMode::Orchestrator* inst);
     // fn may be null to remove it. The caller keeps fn valid while set.
     __declspec(dllexport) void Orchestrator_SetProgressCallback(PeakMode::Orchestrator* inst,
@@ -132,4 +151,8 @@ extern "C" {
     // Copies the last error (UTF-8, NUL-terminated) into buf.
     // Returns the full length in bytes excluding the NUL.
     __declspec(dllexport) int  PeakMode_GetLastError(char* buf, int bufLen);
+    // Session log as a JSON array (UTF-8, NUL-terminated), oldest first, same
+    // calling pattern as PeakMode_GetLastError: returns the full length in
+    // bytes excluding the NUL; call again with a bigger buffer if it was larger.
+    __declspec(dllexport) int  PeakMode_ReadSessions(char* buf, int bufLen);
 }

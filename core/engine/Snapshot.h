@@ -46,8 +46,17 @@ public:
     // Called on startup for %ProgramData%\PeakMode (repairs a wrong ACL).
     static bool secureStateDir(const std::wstring& dir, std::string& error);
     static std::wstring filePath();
+    // Another file in the state dir (empty if the dir is unavailable).
+    static std::wstring stateFile(const wchar_t* name);
+    // Append to a state dir file, created with the same admin-only ACL as
+    // the snapshot, and flush. Used by the session log.
+    static bool appendToStateFile(const wchar_t* name, const std::string& data);
 
     static bool exists();
+
+    // Id of the session a journal belongs to: its "sessionId", or for
+    // v0.1.0 snapshots "<createdUtc>-<pid>". Empty if neither is present.
+    static std::string sessionIdOf(const Entry& doc);
 
     // Start a new journal. Fails if one already exists (leftover).
     static bool begin(const std::string& profileName, std::string& error);

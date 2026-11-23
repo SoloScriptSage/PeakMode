@@ -1,6 +1,7 @@
 #include "Orchestrator.h"
 #include "Log.h"
 #include "Registry.h"
+#include "SessionLog.h"
 #include "Snapshot.h"
 #include "ProfileManager.h"
 #include "../modules/WindowsTweaks.h"
@@ -8,6 +9,7 @@
 #include "../modules/InterruptTweaks.h"
 
 #include <cstring>
+#include <iterator>
 
 namespace PeakMode {
 
@@ -154,10 +156,10 @@ int Orchestrator::activate(const std::string& profilePath) {
     return rc;
 }
 
-int Orchestrator::restore() {
+int Orchestrator::restore(int reason) {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     int restored = 0;
-    int rc = restoreImpl(restored);
+    int rc = restoreImpl(reason, restored);
     emit(PM_EV_DONE, -1, rc, restored);
     return rc;
 }
@@ -184,6 +186,12 @@ int Orchestrator::activateImpl(const std::string& profilePath, int& entries) {
     Log("[Orchestrator] Activating profile \"%s\"", profile.name.c_str());
     m_applied = profile;
     m_active  = true;
+    std::string session;
+    {
+        Snapshot::Entry doc;
+        if (Snapshot::load(doc, err)) session = Snapshot::sessionIdOf(doc);
+        if (!session.empty()) SessionLog::begin(session, profile.name);
+    }
     std::string what;
     try {
         runSteps(stepsFor(profile), [this](int ev, int step, int status, int n) {
@@ -197,17 +205,31 @@ int Orchestrator::activateImpl(const std::string& profilePath, int& entries) {
     if (!what.empty()) {
         Log("[Orchestrator] exception during activation: %s; rolling back", what.c_str());
         int ignored = 0;
-        restoreImpl(ignored);
+        restoreImpl(PM_REASON_ROLLBACK, ignored);
         return fail(PM_ERR_INTERNAL, "Activation failed and was rolled back: " + what);
     }
     entries = Snapshot::entryCount();
     if (!Snapshot::markActive())
         Log("[Orchestrator] warning: could not mark snapshot active");
+    if (!session.empty()) {
+        Snapshot::Entry doc;
+        Snapshot::Entry list = Snapshot::load(doc, err) ? doc["entries"] : Snapshot::Entry::array();
+        SessionLog::active(session, list, WindowsTweaks::activeSchemeGuid());
+    }
     Log("[Orchestrator] Active (%d snapshot entries)", entries);
     return PM_OK;
 }
 
-int Orchestrator::restoreImpl(int& restored) {
+const char* Orchestrator::reasonName(int reason) {
+    static const char* const names[] = {
+        "unknown", "tray", "window", "exit", "sessionEnd", "crashPrompt", "banner", "cli",
+        "rollback",
+    };
+    return (reason >= 0 && reason < static_cast<int>(std::size(names))) ? names[reason]
+                                                                       : names[0];
+}
+
+int Orchestrator::restoreImpl(int reason, int& restored) {
     m_lastError.clear();
 
     // In-process state that is not journaled (released automatically if the
@@ -223,11 +245,16 @@ int Orchestrator::restoreImpl(int& restored) {
         return wasActive ? PM_OK : fail(PM_ERR_NOTHING, "Nothing to restore.");
     }
 
-    Log("[Orchestrator] Restoring from snapshot");
+    Log("[Orchestrator] Restoring from snapshot (reason: %s)", reasonName(reason));
+    std::string session;
     {
         Snapshot::Entry doc;
         std::string err;
-        int total = Snapshot::load(doc, err) ? static_cast<int>(doc["entries"].size()) : 0;
+        int total = 0;
+        if (Snapshot::load(doc, err)) {
+            total   = static_cast<int>(doc["entries"].size());
+            session = Snapshot::sessionIdOf(doc);
+        }
         emit(PM_EV_RESTORE_BEGIN, -1, 0, total);
     }
     int handled = 0;
@@ -239,6 +266,10 @@ int Orchestrator::restoreImpl(int& restored) {
     restored = rep.restored;
     for (const auto& e : rep.errors) Log("[Orchestrator] restore error: %s", e.c_str());
     Log("[Orchestrator] Restore: %d restored, %d failed", rep.restored, rep.failed);
+    // An unreadable snapshot has no session id: nothing to attach the end to
+    if (!session.empty())
+        SessionLog::end(session, reasonName(reason), rep.ok ? "ok" : "partial",
+                        rep.restored, rep.failed);
 
     if (!rep.ok) {
         std::string msg = "Restore incomplete (" + std::to_string(rep.failed) +
@@ -271,6 +302,28 @@ int Orchestrator_Restore(PeakMode::Orchestrator* inst) {
 int Orchestrator_GetState(PeakMode::Orchestrator* inst) {
     if (!inst) return 0;
     return static_cast<int>(inst->state());
+}
+
+int Orchestrator_RestoreWithReason(PeakMode::Orchestrator* inst, int reason) {
+    if (!inst) return PeakMode::PM_ERR_INTERNAL;
+    try { return inst->restore(reason); }
+    catch (...) { return PeakMode::PM_ERR_INTERNAL; }
+}
+
+int PeakMode_ReadSessions(char* buf, int bufLen) {
+    std::string s;
+    try {
+        s = PeakMode::SessionLog::readAll().dump(-1, ' ', false,
+                                                 nlohmann::json::error_handler_t::replace);
+    } catch (...) {
+        s = "[]";
+    }
+    if (buf && bufLen > 0) {
+        size_t n = (std::min)(s.size(), static_cast<size_t>(bufLen - 1));
+        memcpy(buf, s.data(), n);
+        buf[n] = '\0';
+    }
+    return static_cast<int>(s.size());
 }
 
 void Orchestrator_SetProgressCallback(PeakMode::Orchestrator* inst,
