@@ -18,6 +18,12 @@ public partial class MainWindow : Window
 
     internal bool AllowClose { get; set; }
 
+    protected override void OnSourceInitialized(System.EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        DarkTitleBar.Apply(this, captionRgb: 0x07080C, borderRgb: 0x1C1F2A);   // bg, border tokens
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
         if (!AllowClose) { e.Cancel = true; Hide(); }
