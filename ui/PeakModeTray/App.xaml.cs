@@ -2,15 +2,19 @@ using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Threading;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace PeakModeTray
 {
+    // The WPF dispatcher is the only message loop (the tray's NotifyIcon
+    // runs on it too), so WPF windows get normal keyboard input.
     public partial class App : Application
     {
-        private TrayApp? _trayApp;
-        private Mutex?   _singleInstance;
+        private TrayApp?     _trayApp;
+        private CoreService? _core;
+        private Mutex?       _singleInstance;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -30,7 +34,8 @@ namespace PeakModeTray
             System.Windows.Forms.Application.EnableVisualStyles();
             try
             {
-                _trayApp = new TrayApp();
+                _core    = new CoreService(Dispatcher);
+                _trayApp = new TrayApp(_core, Shutdown);
             }
             catch (DllNotFoundException)
             {
@@ -39,12 +44,14 @@ namespace PeakModeTray
                 Shutdown();
                 return;
             }
-            System.Windows.Forms.Application.Run(_trayApp);
-            Shutdown();
+            // After startup returns and the dispatcher is pumping
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,
+                new Action(() => _trayApp?.OfferLeftoverRestore()));
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
+            _core?.Dispose();
             _singleInstance?.Dispose();
             base.OnExit(e);
         }

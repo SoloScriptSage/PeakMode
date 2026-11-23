@@ -10,22 +10,28 @@ using Microsoft.Win32;
 
 namespace PeakModeTray
 {
-    internal class TrayApp : ApplicationContext
+    // Tray icon and menu. Runs on the WPF dispatcher; all core calls go
+    // through CoreService. Behavior matches v0.1.0: left-click toggles,
+    // balloons on success, message box on error, restore prompt on start.
+    internal sealed class TrayApp : IDisposable
     {
         private readonly NotifyIcon        _trayIcon;
         private readonly ToolStripMenuItem _toggleItem;
         private readonly ToolStripMenuItem _statusItem;
         private readonly Icon              _iconActive;
         private readonly Icon              _iconIdle;
-        private readonly IntPtr            _core;
+        private readonly CoreService       _core;
         private readonly string?           _configPath;
+        private readonly Action            _shutdown;
+        private bool _exiting;
 
         private static readonly string StateDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PeakMode");
 
-        public TrayApp()
+        public TrayApp(CoreService core, Action shutdown)
         {
-            _core       = PeakModeCore.Orchestrator_GetInstance();
+            _core       = core;
+            _shutdown   = shutdown;
             _configPath = FindConfig();
 
             (_iconActive, _iconIdle) = LoadIcons();
@@ -63,31 +69,32 @@ namespace PeakModeTray
             // Restore on logoff/shutdown. If Windows kills us first, the
             // snapshot on disk is offered for restore on next start.
             SystemEvents.SessionEnding += OnSessionEnding;
+            _core.StateChanged += UpdateUI;
 
             UpdateUI();
-            OfferLeftoverRestore();
         }
 
-        // ── state ────────────────────────────────────────────────────────────
-        private int State => PeakModeCore.Orchestrator_GetState(_core);
-
-        private void OfferLeftoverRestore()
+        // Called once the dispatcher is running (after construction).
+        public async void OfferLeftoverRestore()
         {
-            if (State != PeakModeCore.StateRestorePending) return;
+            if (_core.State != PeakModeCore.StateRestorePending) return;
             var answer = MessageBox.Show(
                 "PeakMode was still active when it last closed (crash, kill or reboot), " +
                 "so some system settings may still be tweaked.\n\n" +
                 "Restore your original settings now?",
                 "PeakMode", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (answer == DialogResult.Yes) Restore();
+            if (answer == DialogResult.Yes) await Restore(PeakModeCore.ReasonCrashPrompt);
         }
 
-        private void OnToggle(object? sender, EventArgs e)
+        private async void OnToggle(object? sender, EventArgs e)
         {
+            // v0.1.0 blocked the UI thread during an operation; now clicks
+            // while busy are ignored instead of queued.
+            if (_core.IsBusy || _exiting) return;
             try
             {
-                if (State == PeakModeCore.StateIdle) Activate();
-                else                                 Restore();
+                if (_core.State == PeakModeCore.StateIdle) await Activate();
+                else                                       await Restore(PeakModeCore.ReasonTray);
             }
             catch (Exception ex)
             {
@@ -95,41 +102,39 @@ namespace PeakModeTray
             }
         }
 
-        private void Activate()
+        private async Task Activate()
         {
             if (_configPath == null)
             {
                 ShowError("Config not found. Expected config\\peakmode.json next to PeakModeTray.exe.");
                 return;
             }
-            Cursor.Current = Cursors.WaitCursor;
-            int rc = PeakModeCore.Orchestrator_Activate(_core, _configPath);
-            Cursor.Current = Cursors.Default;
-            UpdateUI();
-
-            if (rc == PeakModeCore.OK)
-                _trayIcon.ShowBalloonTip(2000, "PeakMode", "Gaming mode activated", ToolTipIcon.Info);
+            var r = await _core.ActivateAsync(_configPath);
+            if (r.Code == PeakModeCore.OK)
+                ShowBalloon("Gaming mode activated");
             else
-                ShowError(PeakModeCore.LastError());
+                ShowError(r.Error);
         }
 
-        private void Restore()
+        private async Task Restore(int reason)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            int rc = PeakModeCore.Orchestrator_Restore(_core);
-            Cursor.Current = Cursors.Default;
-            UpdateUI();
+            var r = await _core.RestoreAsync(reason);
+            ReportRestore(r);
+        }
 
-            if (rc == PeakModeCore.OK || rc == PeakModeCore.ErrNothing)
-                _trayIcon.ShowBalloonTip(2000, "PeakMode", "Original settings restored", ToolTipIcon.Info);
+        private void ReportRestore(CoreResult r)
+        {
+            if (r.Code == PeakModeCore.OK || r.Code == PeakModeCore.ErrNothing)
+                ShowBalloon("Original settings restored");
             else
-                ShowError(PeakModeCore.LastError() +
-                          "\n\nDetails are in the log (tray menu > Open log).");
+                ShowError(r.Error + "\n\nDetails are in the log (tray menu > Open log).");
         }
 
         private void UpdateUI()
         {
-            switch (State)
+            if (_exiting) return;
+            _toggleItem.Enabled = !_core.IsBusy;
+            switch (_core.State)
             {
                 case PeakModeCore.StateActive:
                     _trayIcon.Icon   = _iconActive;
@@ -154,25 +159,48 @@ namespace PeakModeTray
 
         private void OnSessionEnding(object? sender, SessionEndingEventArgs e)
         {
-            if (State == PeakModeCore.StateActive)
+            // Synchronous: Windows does not wait for async work here.
+            if (_core.State == PeakModeCore.StateActive || _core.IsBusy)
             {
-                try { PeakModeCore.Orchestrator_Restore(_core); } catch { }
+                try { _core.Restore(PeakModeCore.ReasonSessionEnd); } catch { }
             }
         }
 
-        private void OnExit(object? sender, EventArgs e)
+        private async void OnExit(object? sender, EventArgs e)
         {
-            if (State == PeakModeCore.StateActive)
+            if (_exiting) return;
+            _exiting = true;
+            _toggleItem.Enabled = false;
+            try
             {
-                try { Restore(); } catch { }
+                // A running activate finishes first (CoreService serializes),
+                // so check the state after it.
+                if (_core.IsBusy || _core.State == PeakModeCore.StateActive)
+                {
+                    var r = await _core.RestoreAsync(PeakModeCore.ReasonExit);
+                    if (r.Code != PeakModeCore.OK && r.Code != PeakModeCore.ErrNothing)
+                        ShowError(r.Error + "\n\nDetails are in the log (tray menu > Open log).");
+                }
             }
+            catch { }
+            Dispose();
+            _shutdown();
+        }
+
+        public void Dispose()
+        {
             SystemEvents.SessionEnding -= OnSessionEnding;
+            _core.StateChanged -= UpdateUI;
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
-            Application.Exit(); // returns from Application.Run in App.OnStartup
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
+        private void ShowBalloon(string text)
+        {
+            if (!_exiting) _trayIcon.ShowBalloonTip(2000, "PeakMode", text, ToolTipIcon.Info);
+        }
+
         private void ShowError(string message) =>
             MessageBox.Show(message, "PeakMode", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
