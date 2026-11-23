@@ -11,7 +11,13 @@ namespace PeakMode {
 // "powerSchemeCreated", "service". Nagle uses journaled registry writes.
 class WindowsTweaks {
 public:
-    static void apply(const Profile& profile);
+    // Activation steps, run in this order by the Orchestrator (one progress
+    // step each): target process, timer, power plan, Nagle, services.
+    static void applyTargetProcess(const Profile& p);
+    static void applyTimerResolution();
+    static void applyPowerPlan();
+    static void applyNagle();
+    static void applyServices(const Profile& p);   // SysMain, then WSearch
 
     // Release in-process state that is not journaled (timer resolution).
     static void releaseRuntime();
@@ -26,10 +32,6 @@ public:
     static void dump();   // print current state (diagnostics)
 
 private:
-    static void applyTargetProcess(const Profile& p);
-    static void applyTimerResolution();
-    static void applyPowerPlan();
-    static void applyNagle();
     static void stopService(const wchar_t* name);
 };
 
