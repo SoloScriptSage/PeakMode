@@ -23,7 +23,7 @@ Live mockup (owner only): https://claude.ai/artifact/EzmNk9XcEjQ536qb5nwC44
 | surface-hot | #160B12 | card when its tweak is applied, border #5A2140 |
 | text | #F3F1EC | primary text |
 | muted | #A0A6AF | secondary text, labels |
-| faint | #6B7180 | tertiary text |
+| faint | #767D8D | tertiary text (was #6B7180, below 4.5:1 on every surface) |
 | accent | #FF3D7F | active state, switches, applied |
 | accent-soft | #FF8FB5 | accent text on dark |
 | amber | #FFB020 | in progress, warnings (network blip, restore pending) |
@@ -93,6 +93,9 @@ report progress per module (callback or polling) so the UI moves when the core m
 
 ## Accessibility
 
-Every control is a real button or toggle with an automation name. Text contrast 4.5:1 or more
-(the tokens above pass on their backgrounds). Keyboard: Tab through sidebar, hero button,
+Every control is a real button or toggle with an automation name. Text contrast 4.5:1 or more.
+The text tokens (text, muted, faint, accent, accent-soft, amber, green) pass on bg, sidebar,
+surface and surface-hot; text, amber and the banner text pass on the amber banner background.
+Faint is the exception there: it is not used on the banner. `ContrastTests` in
+`ui/PeakModeTray.Tests` checks these pairs against `Themes/Tokens.xaml` on every build. Keyboard: Tab through sidebar, hero button,
 switches; Space or Enter activates.
