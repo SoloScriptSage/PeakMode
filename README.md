@@ -214,7 +214,7 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | 0.2.0: Boost with Windows "Show animations" off | **Untested** | | |
 | 0.2.0: keyboard-only use and screen readers | **Untested** | | Controls have automation names; not tried with Narrator |
 | 0.2.0: main window on high DPI (above 100 %) | **Untested** | | |
-| UI unit tests (History parsing, ProfileStore, token contrast) | Yes (81 pass locally) | | In CI: **untested** until the first pull request run |
+| UI unit tests (History parsing, ProfileStore, token contrast) | Yes (81 pass) | | Locally and in [run 45335283270](https://github.com/SoloScriptSage/PeakMode/actions/runs/45335283270) on windows-latest (pull request #6) |
 | v0.2.0 release zip | **Untested** | | Not built or tagged yet |
 
 ---
