@@ -23,7 +23,7 @@ jobs:
         shell: pwsh
         run: |
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v') }
-          else { $v = "0.1.0-dev.$env:GITHUB_RUN_NUMBER" }
+          else { $v = "0.2.0-dev.$env:GITHUB_RUN_NUMBER" }
           "PM_VERSION=$v" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           "Version: $v"
 

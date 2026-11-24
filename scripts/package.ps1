@@ -4,7 +4,7 @@
   native core DLL and the default config, then zip it. Used by CI and
   runnable locally.
 .EXAMPLE
-  .\package.ps1 -Version 0.1.0 -CoreDll ..\core\build\Release\PeakModeCore.dll
+  .\package.ps1 -Version 0.2.0 -CoreDll ..\core\build\Release\PeakModeCore.dll
 #>
 param(
     [Parameter(Mandatory)] [string] $Version,

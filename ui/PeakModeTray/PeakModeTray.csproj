@@ -11,7 +11,7 @@
     <ApplicationIcon>..\..\assets\peakmode.ico</ApplicationIcon>
     <AssemblyName>PeakModeTray</AssemblyName>
     <RootNamespace>PeakModeTray</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Product>PeakMode</Product>
     <Copyright>Copyright (c) 2026 SoloScriptSage. MIT License.</Copyright>
 
