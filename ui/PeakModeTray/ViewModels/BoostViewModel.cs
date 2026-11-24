@@ -70,10 +70,18 @@ namespace PeakModeTray.ViewModels
 
         public RelayCommand ToggleCommand { get; }
 
-        public BoostViewModel(ICoreService core, string? configPath)
+        // Power plan and timer come from the live system; the preview passes
+        // simulated readers because it changes nothing on the system.
+        private readonly Func<string> _powerPlan;
+        private readonly Func<double> _timerMs;
+
+        public BoostViewModel(ICoreService core, string? configPath,
+                              Func<string>? powerPlan = null, Func<double>? timerMs = null)
         {
             _core = core;
             _configPath = configPath;
+            _powerPlan = powerPlan ?? SystemInfo.ActivePowerPlanName;
+            _timerMs   = timerMs   ?? SystemInfo.TimerResolutionMs;
             ToggleCommand = new RelayCommand(Toggle, () => !_core.IsBusy);
             _core.Progress     += OnProgress;
             _core.StateChanged += OnStateChanged;
@@ -259,11 +267,13 @@ namespace PeakModeTray.ViewModels
             SnapshotStat.Value = idle ? "NONE" : "SAVED";
             SnapshotStat.Note  = idle ? "Saved before any change" : "Survives crash and reboot";
             SnapshotStat.Hot   = !idle;
-            string plan = SystemInfo.ActivePowerPlanName();
-            PowerStat.Value = plan.ToUpperInvariant();
+            string plan = _powerPlan();
+            // "High performance" does not fit the card at the minimum window size
+            PowerStat.Value = plan.Replace("performance", "perf.", StringComparison.OrdinalIgnoreCase)
+                                  .ToUpperInvariant();
             PowerStat.Note  = "Windows power scheme";
             PowerStat.Hot   = plan.Contains("performance", StringComparison.OrdinalIgnoreCase);
-            double ms = SystemInfo.TimerResolutionMs();
+            double ms = _timerMs();
             TimerStat.Value = ms > 0 ? $"{ms:0.##} MS" : "N/A";
             TimerStat.Note  = "System timer resolution";
             TimerStat.Hot   = ms > 0 && ms <= 0.51;
