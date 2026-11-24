@@ -215,7 +215,8 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | 0.2.0: keyboard-only use and screen readers | **Untested** | | Controls have automation names; not tried with Narrator |
 | 0.2.0: main window on high DPI (above 100 %) | **Untested** | | |
 | UI unit tests (History parsing, ProfileStore, token contrast) | Yes (81 pass) | | Locally and in [run 45335283270](https://github.com/SoloScriptSage/PeakMode/actions/runs/45335283270) on windows-latest (pull request #6) |
-| v0.2.0 release zip | **Untested** | | Not built or tagged yet |
+| 0.2.0 CI build zip (0.2.0-dev.7, same code as v0.2.0): activate and restore with the Boost gauge | Yes | Yes | 19 snapshot entries; all 41 captured values identical after restore; session log `reason=window`, `ok`, 19 restored, 0 failed. Windows Search was running again within seconds of being stopped ([#7](https://github.com/SoloScriptSage/PeakMode/issues/7)); restore was unaffected |
+| v0.2.0 release zip as downloaded from the release page | **Untested** | | Built and published by [run 45337581887](https://github.com/SoloScriptSage/PeakMode/actions/runs/45337581887) |
 
 ---
 
@@ -225,7 +226,11 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 - [#2](https://github.com/SoloScriptSage/PeakMode/issues/2) Snapshot owner is never checked for liveness; a second process can restore a live instance's tweaks
 - [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Active instance does not notice when another process restored its snapshot
 - [#4](https://github.com/SoloScriptSage/PeakMode/issues/4) "Already running" message box can hide behind other windows
-- [#5](https://github.com/SoloScriptSage/PeakMode/issues/5) Snapshot write can fail when another process has snapshot.json open: fixed on the 0.2.0 branch with a short retry (self-test covers it); the change is still skipped safely if the file stays locked
+- [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Windows Search can restart within seconds of being stopped, so that tweak may not last for the whole boost (restore is unaffected)
+
+Fixed in 0.2.0:
+
+- [#5](https://github.com/SoloScriptSage/PeakMode/issues/5) Snapshot write could fail when another process had snapshot.json open. The write is now retried for about half a second; if the file stays locked, the change is still skipped safely
 
 ---
 
