@@ -32,7 +32,9 @@ namespace PeakModeTray
             {
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
                 var core = new PreviewCoreService(pending: Array.IndexOf(e.Args, "--preview-pending") >= 0);
-                var preview = new MainWindow(CreateMainViewModel(core, PreviewConfig()))
+                bool On() => core.State == PeakModeTray.PeakModeCore.StateActive;
+                var preview = new MainWindow(CreateMainViewModel(core, PreviewConfig(),
+                    () => On() ? "High performance" : "Balanced", () => On() ? 0.5 : 15.625))
                 {
                     AllowClose = true, Title = "PeakMode (preview, simulated core)",
                 };
@@ -82,10 +84,11 @@ namespace PeakModeTray
             _window.Activate();
         }
 
-        private static ViewModels.MainViewModel CreateMainViewModel(ICoreService core, string? configPath)
+        private static ViewModels.MainViewModel CreateMainViewModel(ICoreService core, string? configPath,
+            Func<string>? powerPlan = null, Func<double>? timerMs = null)
         {
             var store  = new ProfileStore(configPath);
-            var boost  = new ViewModels.BoostViewModel(core, configPath);
+            var boost  = new ViewModels.BoostViewModel(core, configPath, powerPlan, timerMs);
             var tweaks = new ViewModels.TweaksViewModel(core, store);
             store.Changed += boost.ProfileChanged;
             return new ViewModels.MainViewModel(boost, tweaks, new ViewModels.HistoryViewModel(core));

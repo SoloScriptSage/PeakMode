@@ -46,7 +46,7 @@ namespace PeakModeTray
             if (pending)
             {
                 _session = Id(now.AddMinutes(-40), PrevRunPid);
-                Log("begin", now.AddMinutes(-40), PrevRunPid, new() { ["profile"] = "gaming" });
+                Log("begin", now.AddMinutes(-40), PrevRunPid, new() { ["profile"] = "default" });
                 Log("active", now.AddMinutes(-40), PrevRunPid, ActiveFields(19));
                 State = PeakModeCore.StateRestorePending;
             }
@@ -57,7 +57,7 @@ namespace PeakModeTray
         private void Sample(DateTime begin, TimeSpan dur, string reason, int n, int pid, int endPid)
         {
             _session = Id(begin, pid);
-            Log("begin", begin, pid, new() { ["profile"] = "gaming" });
+            Log("begin", begin, pid, new() { ["profile"] = "default" });
             Log("active", begin, pid, ActiveFields(n));
             Log("end", begin + dur, endPid, EndFields(reason, n));
         }
@@ -110,7 +110,7 @@ namespace PeakModeTray
             Busy(true);
             var start = DateTime.UtcNow;
             _session = Id(start, PreviewPid);
-            Log("begin", start, PreviewPid, new() { ["profile"] = "gaming" });
+            Log("begin", start, PreviewPid, new() { ["profile"] = "default" });
             int n = 0;
             foreach (var (step, status, entries) in Steps)
             {
