@@ -193,14 +193,31 @@ static void testSnapshotHeldOpen() {
         DeleteFileW(probe.c_str());
     }
 
-    // Reader closes after 150 ms: the write waits for it and succeeds
+    // Reader closes after 150 ms: the helper retries until it is gone. Called
+    // directly, so the rename starts at once (a record() writes and flushes
+    // the temp file first, which on a slow disk can outlast the reader).
+    {
+        std::wstring next = dir + L"\\next.tmp";
+        HANDLE p = CreateFileW(next.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+        CloseHandle(p);
+        std::thread closer([h] { Sleep(150); CloseHandle(h); });
+        unsigned long code = 1;
+        int attempts = 0;
+        CHECK(PeakMode::ReplaceFileRetrying(next, file, &code, &attempts));
+        closer.join();
+        CHECK(code == 0 && attempts > 1);
+        // `file` is now the empty probe: write the journal back
+        CHECK(Snapshot::record({ { "kind", "t" }, { "id", 2 } }));
+    }
+
+    // Through record(): a reader that closes while the write is under way
+    h = holdOpen();
+    CHECK(h != INVALID_HANDLE_VALUE);
     std::thread closer([h] { Sleep(150); CloseHandle(h); });
-    ULONGLONG t0 = GetTickCount64();
-    CHECK(Snapshot::record({ { "kind", "t" }, { "id", 2 } }));
-    ULONGLONG waited = GetTickCount64() - t0;
+    CHECK(Snapshot::record({ { "kind", "t" }, { "id", 5 } }));
     closer.join();
-    CHECK(waited >= 100);
-    CHECK(entriesOnDisk() == 2);
+    CHECK(entriesOnDisk() == 3);
+    ULONGLONG t0, waited;
 
     // Reader never lets go during the write: record fails, nothing half
     // written, the change would be skipped; the next write works again
@@ -211,10 +228,10 @@ static void testSnapshotHeldOpen() {
     waited = GetTickCount64() - t0;
     CloseHandle(h);
     CHECK(waited >= 400 && waited < 3000);
-    CHECK(entriesOnDisk() == 2);
+    CHECK(entriesOnDisk() == 3);
     CHECK(GetFileAttributesW((file + L".tmp").c_str()) == INVALID_FILE_ATTRIBUTES);
     CHECK(Snapshot::record({ { "kind", "t" }, { "id", 4 } }));
-    CHECK(entriesOnDisk() == 3);
+    CHECK(entriesOnDisk() == 4);
 
     // Other errors are not retried
     unsigned long code = 0;
@@ -223,7 +240,7 @@ static void testSnapshotHeldOpen() {
     CHECK(code == ERROR_FILE_NOT_FOUND && attempts == 1);
 
     auto rep = Snapshot::restoreAll([](const Snapshot::Entry&, std::string&) { return true; });
-    CHECK(rep.ok && rep.restored == 3 && !Snapshot::exists());
+    CHECK(rep.ok && rep.restored == 4 && !Snapshot::exists());
     Snapshot::setStateDirForTests(L"");
     DeleteFileW((dir + L"\\peakmode.log").c_str());
     RemoveDirectoryW(dir.c_str());
