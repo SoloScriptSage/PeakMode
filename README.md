@@ -8,6 +8,10 @@ A Windows tray app that applies a set of gaming performance tweaks with one clic
 
 Every change is recorded on disk before it is made, so PeakMode can put your system back even after a crash, a killed process or a reboot.
 
+<p align="center">
+  <img src="assets/screenshots/boost.png" alt="Boost screen while active: the gauge at the redline, 19 of 19 settings applied, and the tweak cards marked APPLIED" width="720">
+</p>
+
 ---
 
 ## What it does
@@ -32,17 +36,34 @@ Every change is recorded on disk before it is made, so PeakMode can put your sys
 
 ### Why interrupt tweaks are off by default
 
-Adapter settings only take effect after the adapter restarts, so with `interruptTweaks` enabled PeakMode **disables and re-enables your Ethernet adapter on activate and again on restore**. Your connection drops for a few seconds each time, and anything online (a game lobby, a call, a download) may disconnect. Turn it on in the config only if that is acceptable. Wi-Fi adapters are never touched.
+Adapter settings only take effect after the adapter restarts, so with `interruptTweaks` enabled PeakMode **disables and re-enables your Ethernet adapter on activate and again on restore**. Your connection drops for a few seconds each time, and anything online (a game lobby, a call, a download) may disconnect. Turn it on only if that is acceptable. Wi-Fi adapters are never touched.
+
+---
+
+## The main window
+
+New in 0.2.0. Open it from the tray menu (**Open PeakMode**). Closing the window hides it; the tray keeps running.
+
+- **Boost.** The logo is the button: a tachometer whose needle moves as the core applies each step, then revs at the redline while active. Four cards show the changes applied, the snapshot state, the active power plan and the timer resolution. Below, one card per tweak shows READY, APPLYING, APPLIED, SKIPPED or RESTORED. Clicking the gauge again restores everything, newest change first. With Windows "Show animations" off, the gauge jumps between states.
+- **Tweaks.** Every module with a one-line description, a risk tag (SAFE or NETWORK BLIP), how many values it saves, and a switch that writes to `config\peakmode.json`. Expand a row to see exactly what changes, how it is restored and what it needs. The target process is set here too. Switches are locked while a boost is active.
+- **History.** Every boost and restore from the session log: when, how many settings, how it ended (CLEAN, AFTER CRASH, PARTIAL), how long it was active and what restored it. The selected session lists its snapshot entries with the value before and during the boost. If PeakMode was still active when it last closed, a banner offers RESTORE NOW.
+
+<p align="center">
+  <img src="assets/screenshots/tweaks.png" alt="Tweaks screen: seven modules with risk tags, value counts and include switches" width="49%">
+  <img src="assets/screenshots/history.png" alt="History screen: session list with CLEAN and AFTER CRASH badges, and the selected session's snapshot entries" width="49%">
+</p>
+
+The screenshots come from the preview build on a simulated core (see Building), so the sessions and interface ids in them are sample data.
 
 ---
 
 ## Install and use
 
 1. Download `PeakMode-<version>-win-x64.zip` from the [releases](../../releases) and extract it anywhere.
-2. Optionally edit `config\peakmode.json` (for example set `windows.targetProcess` to your game's exe name).
+2. Optionally set your game's exe name on the Tweaks screen, or edit `config\peakmode.json` directly (`windows.targetProcess`).
 3. Run `PeakModeTray.exe` and accept the administrator prompt. The icon appears in the tray (grey = idle).
    The exe is not code-signed, so on first start Windows SmartScreen may show "Windows protected your PC". Click **More info**, then **Run anyway**.
-4. Left-click the icon to activate (icon turns colored), left-click again to restore. Right-click for the menu: open config, open log, exit.
+4. Left-click the tray icon to activate (icon turns colored), left-click again to restore. Or open the window and click the gauge. Right-click the icon for the menu: open PeakMode, open config, open log, exit.
 
 The release is self-contained: no .NET runtime needs to be installed. Exiting the tray while active restores everything first.
 
@@ -58,9 +79,10 @@ The release is self-contained: no .NET runtime needs to be installed. Exiting th
 
 - **Write-ahead snapshot.** Before each individual change, PeakMode writes the original value to `C:\ProgramData\PeakMode\snapshot.json`. If the write fails, the change is not made. Values that did not exist before are recorded as such and deleted again on restore.
 - **Restore works from a fresh process.** Restore uses only the snapshot file, in reverse order. The file is deleted only when every item was restored; failed items stay in it so you can retry.
-- **Crash or reboot while active.** On the next start the tray asks whether to restore the original settings. Until then it shows "restore pending".
+- **Crash or reboot while active.** On the next start the tray asks whether to restore the original settings, and the History screen shows a restore banner. Until then the tray shows "restore pending".
 - **Logoff and shutdown.** The tray restores on session end. If Windows ends it first, you get the restore prompt on the next start.
 - **Locked-down state folder.** `C:\ProgramData\PeakMode` is accessible to Administrators and SYSTEM only. PeakMode repairs that ACL on startup, refuses a folder or snapshot file not owned by Administrators/SYSTEM, and only restores registry values under the three keys it changes.
+- **Session log.** `C:\ProgramData\PeakMode\sessions.jsonl` records each session's start, its snapshot entries and how it ended (what restored it, ok or partial, how many items). It is append-only, in the same locked-down folder, and moves to `sessions.1.jsonl` at 1 MB. Writing it never blocks activate or restore.
 - **Log.** `C:\ProgramData\PeakMode\peakmode.log` (also reachable from the tray menu).
 
 If something is ever left tweaked, see [RECOVERY.md](scripts/RECOVERY.md) (also included in the release zip).
@@ -69,7 +91,7 @@ If something is ever left tweaked, see [RECOVERY.md](scripts/RECOVERY.md) (also 
 
 ## Configuration
 
-`config\peakmode.json` next to `PeakModeTray.exe`. Missing keys use the defaults below; unknown keys are logged and ignored; a malformed file stops activation with an error instead of falling back silently.
+`config\peakmode.json` next to `PeakModeTray.exe`. The Tweaks screen edits the same file and keeps every other key and the key order (comments are not kept). Missing keys use the defaults below; unknown keys are logged and ignored; a malformed file stops activation with an error instead of falling back silently.
 
 | Key | Default | Effect |
 |---|---|---|
@@ -97,20 +119,34 @@ If something is ever left tweaked, see [RECOVERY.md](scripts/RECOVERY.md) (also 
 ## Architecture
 
 ```
-PeakModeTray.exe  (C# WPF/WinForms tray app, .NET 8, self-contained)
+PeakModeTray.exe  (C# WPF tray app and main window, .NET 8, self-contained)
+  TrayApp          tray icon and menu, restore prompt, restore on logoff
+  MainWindow       Boost, Tweaks and History screens (view models in ViewModels/)
+  ProfileStore     reads and writes config\peakmode.json for the Tweaks screen
+  CoreService      the only caller of the DLL: runs activate/restore one at a
+                   time on a worker thread, raises progress and state events
+                   on the UI thread, passes the restore reason
         |
-        |  P/Invoke (C ABI, UTF-8 strings, int status codes)
+        |  P/Invoke (C ABI, UTF-8 strings, int status codes, progress callback)
         v
 PeakModeCore.dll  (C++20)
-  Orchestrator     activate / restore, status and error reporting
+  Orchestrator     activate / restore in steps, progress events per step and
+                   per restored entry, status and error reporting
   ProfileManager   loads config\peakmode.json (nlohmann/json)
-  Snapshot         write-ahead journal in C:\ProgramData\PeakMode
+  Snapshot         write-ahead journal in C:\ProgramData\PeakMode, entries
+                   tagged with the step that recorded them
+  SessionLog       append-only sessions.jsonl: begin, active (entries), end
+                   (reason, result, restored, failed)
   Registry         journaled HKLM writes, restricted to known keys
   Modules
     WindowsTweaks    priority, affinity, timer, power plan, Nagle, services
     NvidiaTweaks     NVAPI driver settings (DRS)
     InterruptTweaks  adapter IRQ policy and advanced properties
 ```
+
+Progress events: activate sends a begin and an end event for each step (process, timer, power, Nagle, services, NVIDIA, interrupts) with its status and the running entry count; restore sends one event per restored entry, in restore order. The Boost gauge and the tweak cards move on these events, not on a timer.
+
+Restore reasons stored in the session log: tray, window, exit, sessionEnd, crashPrompt, banner, cli, rollback.
 
 `peakmode_test.exe` is a command line front end to the same DLL, used for testing and manual recovery: `activate`, `restore`, `status`, `dump`, `selftest`.
 
@@ -125,19 +161,24 @@ cmake -S core -B core/build -A x64
 cmake --build core/build --config Release
 core/build/Release/peakmode_test.exe selftest config/peakmode.json
 
+# UI tests (no core, no system changes)
+dotnet test ui/PeakModeTray.Tests -c Release
+
 # Release zip in dist\ (same script CI uses)
-./scripts/package.ps1 -Version 0.1.0 -CoreDll core/build/Release/PeakModeCore.dll
+./scripts/package.ps1 -Version 0.2.0 -CoreDll core/build/Release/PeakModeCore.dll
 ```
 
-CI (`.github/workflows/build.yml`) builds, runs the self-test and packages on every push and pull request; tags `v*` publish the zip as a GitHub release.
+A Debug build of the tray has a preview mode for UI work: `PeakModeTray.exe --window-preview` opens the main window on a simulated core with sample history and changes nothing on the system (it edits a copy of the config in `%TEMP%`). Add `--preview-pending` to start with a leftover session and the restore banner.
 
-The NVAPI headers and import library in `core/third_party/nvapi` are a vendored subset of the NVIDIA NVAPI SDK (MIT).
+CI (`.github/workflows/build.yml`) builds, runs the core self-test and the UI tests, and packages on every push to `main` and every pull request; tags `v*` publish the zip as a GitHub release.
+
+The NVAPI headers and import library in `core/third_party/nvapi` are a vendored subset of the NVIDIA NVAPI SDK (MIT). The bundled fonts (Chakra Petch, Inter, JetBrains Mono) are under the SIL Open Font License; their licenses ship in the release zip.
 
 ---
 
 ## Test status
 
-All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 4800H, NVIDIA RTX 3050 Ti Laptop GPU, Realtek RTL8168 Ethernet. Each cycle captures every setting PeakMode touches before activating, while active, and after restore, and passes only if the state after restore is identical to before (`scripts/run-cycle.ps1`, `scripts/tray-cycle.ps1`). In every cycle the restore ran in a separate, fresh process, the same path used after a crash.
+All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 4800H, NVIDIA RTX 3050 Ti Laptop GPU, Realtek RTL8168 Ethernet. Each cycle captures every setting PeakMode touches before activating, while active, and after restore (`scripts/verify-state.ps1`), and passes only if the state after restore is identical to before. In the v0.1.0 cycles the restore ran in a separate, fresh process, the same path used after a crash.
 
 | Area | Applied and verified | Restored to identical state | Notes |
 |---|---|---|---|
@@ -165,6 +206,26 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | GitHub Actions build, self-test and packaging | Yes | | [Run 45060641184](https://github.com/SoloScriptSage/PeakMode/actions/runs/45060641184) on windows-latest, including the state folder ACL self-test |
 | GitHub Actions release on a `v*` tag | Yes | | [Run 45062573365](https://github.com/SoloScriptSage/PeakMode/actions/runs/45062573365) published the v0.1.0 release |
 | v0.1.0 release zip as downloaded: tray Activate and Restore | Yes | Yes | Default config, 19 snapshot entries; state after restore identical to before |
+| 0.2.0: activate from the window, restore from the tray | Yes | Yes | 17 snapshot entries; one Nagle interface skipped because the snapshot write failed ([#5](https://github.com/SoloScriptSage/PeakMode/issues/5)); session log `reason=tray` |
+| 0.2.0: activate and restore both with the Boost gauge | Yes | Yes | Default config, 19 snapshot entries; all 41 captured values identical after restore; session log `reason=window`, `ok`, 19 restored, 0 failed |
+| 0.2.0: History screen on the real session log | Yes | | Showed that cycle as CLEAN, restored by Boost screen, all 19 entries with before and during values; older sessions including one AFTER CRASH |
+| 0.2.0: History restore banner on a real leftover snapshot | **Untested** | | Tested in the preview only |
+| 0.2.0: Tweaks switches writing the real config | **Untested** | | ProfileStore covered by unit tests on a temp copy |
+| 0.2.0: Boost with Windows "Show animations" off | **Untested** | | |
+| 0.2.0: keyboard-only use and screen readers | **Untested** | | Controls have automation names; not tried with Narrator |
+| 0.2.0: main window on high DPI (above 100 %) | **Untested** | | |
+| UI unit tests (History parsing, ProfileStore, token contrast) | Yes (81 pass locally) | | In CI: **untested** until the first pull request run |
+| v0.2.0 release zip | **Untested** | | Not built or tagged yet |
+
+---
+
+## Known issues
+
+- [#1](https://github.com/SoloScriptSage/PeakMode/issues/1) Snapshot::begin: check-then-create race can overwrite another process's snapshot
+- [#2](https://github.com/SoloScriptSage/PeakMode/issues/2) Snapshot owner is never checked for liveness; a second process can restore a live instance's tweaks
+- [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Active instance does not notice when another process restored its snapshot
+- [#4](https://github.com/SoloScriptSage/PeakMode/issues/4) "Already running" message box can hide behind other windows
+- [#5](https://github.com/SoloScriptSage/PeakMode/issues/5) Snapshot write can fail with a sharing violation when another process has snapshot.json open (the change is then skipped safely)
 
 ---
 
@@ -175,6 +236,9 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 - [x] Config file with per-tweak flags
 - [x] C# tray app with P/Invoke to the C++ core
 - [x] CI build and release packaging
+- [x] Main window: Boost, Tweaks and History screens (0.2.0)
+- [x] Session log with restore reasons (0.2.0)
+- [ ] Settings screen
 - [ ] Apply priority/affinity when the game starts after activation (today it must already be running)
 - [ ] Per-game profiles
 - [ ] Optional auto-activate on game launch
@@ -186,4 +250,4 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party: NVIDIA NVAPI (MIT), nlohmann/json (MIT).
+MIT, see [LICENSE](LICENSE). Third-party: NVIDIA NVAPI (MIT), nlohmann/json (MIT), Chakra Petch, Inter and JetBrains Mono fonts (SIL OFL 1.1).
