@@ -24,13 +24,18 @@ public partial class MainWindow : Window
     internal bool AllowClose { get; set; }
 
     // Sidebar: show one page (Checked fires during InitializeComponent too)
-    private void OnNavBoost(object sender, RoutedEventArgs e)  => ShowPage(boost: true);
-    private void OnNavTweaks(object sender, RoutedEventArgs e) => ShowPage(boost: false);
-    private void ShowPage(bool boost)
+    private void OnNavBoost(object sender, RoutedEventArgs e)   => ShowPage(BoostPage);
+    private void OnNavTweaks(object sender, RoutedEventArgs e)  => ShowPage(TweaksPage);
+    private void OnNavHistory(object sender, RoutedEventArgs e)
     {
-        if (BoostPage == null || TweaksPage == null) return;
-        BoostPage.Visibility  = boost ? Visibility.Visible : Visibility.Collapsed;
-        TweaksPage.Visibility = boost ? Visibility.Collapsed : Visibility.Visible;
+        (DataContext as ViewModels.MainViewModel)?.History.Refresh();
+        ShowPage(HistoryPage);
+    }
+    private void ShowPage(FrameworkElement? page)
+    {
+        if (page == null || BoostPage == null || TweaksPage == null || HistoryPage == null) return;
+        foreach (var p in new FrameworkElement[] { BoostPage, TweaksPage, HistoryPage })
+            p.Visibility = p == page ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // Hero layout: counter and hint under the gauge, or beside it when that

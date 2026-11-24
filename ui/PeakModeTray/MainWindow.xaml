@@ -55,6 +55,55 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="16,6" />
         </Style>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <!-- History: session badge (CLEAN green, ACTIVE pink, others amber) -->
+        <Style x:Key="SessionBadgeBorder" TargetType="Border" BasedOn="{StaticResource TagBorder}">
+            <Setter Property="BorderBrush" Value="{StaticResource AmberBorderBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding BadgeGreen}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource GreenBorderBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding BadgeHot}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource BorderHotBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SessionBadgeText" TargetType="TextBlock" BasedOn="{StaticResource TagText}">
+            <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding BadgeGreen}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding BadgeHot}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource AccentSoftBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- History: one session in the list, accent border when selected -->
+        <Style x:Key="SessionButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AccentFocusVisual}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="3,1,1,1" Padding="16,14">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceHotBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <DataTemplate x:Key="StatTemplate" DataType="{x:Type vm:StatViewModel}">
             <Border Style="{StaticResource StatCard}">
                 <StackPanel VerticalAlignment="Center">
@@ -108,7 +157,7 @@
                     <RadioButton Style="{StaticResource NavItem}" Content="Tweaks" Tag="{x:Static vm:Icons.Tweaks}"
                                  GroupName="nav" AutomationProperties.Name="Tweaks" Checked="OnNavTweaks" />
                     <RadioButton Style="{StaticResource NavItem}" Content="History" Tag="{x:Static vm:Icons.History}"
-                                 GroupName="nav" IsEnabled="False" AutomationProperties.Name="History (coming)" />
+                                 GroupName="nav" AutomationProperties.Name="History" Checked="OnNavHistory" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Settings" Tag="{x:Static vm:Icons.Settings}"
                                  GroupName="nav" IsEnabled="False" AutomationProperties.Name="Settings (coming)" />
                 </StackPanel>
@@ -528,6 +577,168 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+        </Grid>
+
+        <!-- History screen: session list left, selected session right -->
+        <Grid x:Name="HistoryPage" Grid.Column="1" Margin="36,24,24,24" DataContext="{Binding History}"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Margin="0,0,12,0">
+                <TextBlock Text="EVERY BOOST, EVERY RESTORE" Style="{StaticResource EyebrowText}" />
+                <TextBlock Text="HISTORY" Style="{StaticResource H1Text}" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- Restore-pending banner -->
+            <Border Grid.Row="1" Margin="0,20,12,0" Padding="20,18" Background="{StaticResource AmberBgBrush}"
+                    BorderBrush="{StaticResource AmberBorderBrush}" BorderThickness="1"
+                    Visibility="{Binding ShowBanner, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <Path DockPanel.Dock="Left" Data="M12,3 L22,21 L2,21 Z M12,10 L12,15 M12,18 L12.01,18" Width="26" Height="26"
+                          Stretch="Uniform" Stroke="{StaticResource AmberBrush}" StrokeThickness="2"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                          VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="Later"
+                            FontFamily="{StaticResource BodyFont}" FontSize="13" Margin="10,0,0,0"
+                            Foreground="{StaticResource AmberTextBrush}" BorderBrush="{StaticResource AmberBorderBrush}"
+                            Command="{Binding LaterCommand}" AutomationProperties.Name="Restore later" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource AmberButton}" Content="RESTORE NOW"
+                            Command="{Binding RestoreNowCommand}" AutomationProperties.Name="Restore now" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="PeakMode was still active when it last closed" Style="{StaticResource BodyText}"
+                                   FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="The saved original settings are waiting to be restored." Style="{StaticResource BodyText}"
+                                   FontSize="13" Foreground="{StaticResource AmberTextBrush}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <TextBlock Grid.Row="2" Margin="0,20,12,0" Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                       Text="No sessions yet. Every boost and restore shows up here."
+                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}" />
+
+            <Grid Grid.Row="2" Margin="0,20,12,0" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" Padding="0,0,8,0">
+                    <ItemsControl ItemsSource="{Binding Sessions}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource SessionButton}" Command="{Binding Pick}"
+                                        AutomationProperties.Name="{Binding AutomationName}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Right" Style="{StaticResource SessionBadgeBorder}" Margin="8,0,0,0">
+                                                <TextBlock Text="{Binding Badge}" Style="{StaticResource SessionBadgeText}" />
+                                            </Border>
+                                            <TextBlock Text="{Binding When}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
+                                                       FontSize="16" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Line}" Style="{StaticResource MonoText}" FontSize="12"
+                                                   Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" Padding="22" DataContext="{Binding Selected}">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top">
+                            <TextBlock Text="{Binding DetailTitle}" Style="{StaticResource H2Text}" FontSize="22" />
+                            <TextBlock Text="{Binding DetailMeta}" Style="{StaticResource MonoText}" FontSize="12"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <UniformGrid DockPanel.Dock="Top" Columns="3" Margin="0,16,0,0">
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="14,12" Margin="0,0,5,0">
+                                <StackPanel>
+                                    <TextBlock Text="ACTIVE FOR" Style="{StaticResource LabelText}" FontSize="10" />
+                                    <TextBlock Text="{Binding ActiveFor}" Style="{StaticResource StatValueText}" FontSize="18"
+                                               Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="14,12" Margin="5,0,5,0">
+                                <StackPanel>
+                                    <TextBlock Text="RESTORED BY" Style="{StaticResource LabelText}" FontSize="10" />
+                                    <TextBlock Text="{Binding RestoredBy}" Style="{StaticResource StatValueText}" FontSize="18"
+                                               Margin="0,4,0,0" TextWrapping="Wrap" ToolTip="{Binding RestoredBy}" />
+                                </StackPanel>
+                            </Border>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="14,12" Margin="5,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="RESULT" Style="{StaticResource LabelText}" FontSize="10" />
+                                    <TextBlock Text="{Binding Result}" FontSize="18" Margin="0,4,0,0" TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource StatValueText}">
+                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ResultGood}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+                        <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="0,0,0,6" Margin="0,16,0,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="BEFORE → DURING" Style="{StaticResource LabelText}"
+                                           FontSize="11" Foreground="{StaticResource FaintBrush}" />
+                                <TextBlock Text="SNAPSHOT ENTRY" Style="{StaticResource LabelText}" FontSize="11"
+                                           Foreground="{StaticResource FaintBrush}" />
+                            </DockPanel>
+                        </Border>
+                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding EntriesNote}" Style="{StaticResource FaintText}"
+                                   FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Entries}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{StaticResource RowLineBrush}" BorderThickness="0,0,0,1" Padding="0,9">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="28" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding N}" Style="{StaticResource MonoText}" FontSize="11"
+                                                           Foreground="{StaticResource FaintBrush}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding What}" Style="{StaticResource BodyText}" FontSize="13"
+                                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding What}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Before}" Style="{StaticResource MonoText}" FontSize="12"
+                                                           Foreground="{StaticResource MutedBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="3" Text="→" Foreground="{StaticResource FaintBrush}" Margin="8,0"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="4" Text="{Binding During}" Style="{StaticResource MonoText}" FontSize="12"
+                                                           Foreground="{StaticResource AccentSoftBrush}" VerticalAlignment="Center" />
+                                                <Path Grid.Column="5" Data="M5,12 L10,17 L20,7" Width="16" Height="16" Stretch="Uniform"
+                                                      Stroke="{StaticResource GreenBrush}" StrokeThickness="2.5" HorizontalAlignment="Right"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                      AutomationProperties.Name="Restored"
+                                                      Visibility="{Binding Restored, Converter={StaticResource BoolToVis}}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
