@@ -13,6 +13,7 @@ endif()
 
 # ── Core DLL ──────────────────────────────────────────────────────────────────
 add_library(PeakModeCore SHARED
+    engine/FileUtil.cpp
     engine/Log.cpp
     engine/ProfileManager.cpp
     engine/Registry.cpp

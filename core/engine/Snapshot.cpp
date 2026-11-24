@@ -9,6 +9,7 @@
 #include <mutex>
 #include <sstream>
 
+#include "FileUtil.h"
 #include "Log.h"
 #include "Snapshot.h"
 #include "Utf8.h"
@@ -127,8 +128,8 @@ bool writeAtomic(const std::wstring& target, const std::string& content) {
               && FlushFileBuffers(h);
     CloseHandle(h);
     if (!ok) { DeleteFileW(tmp.c_str()); return false; }
-    if (!MoveFileExW(tmp.c_str(), target.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+    // Retries while a reader briefly has the snapshot open (#5)
+    if (!ReplaceFileRetrying(tmp, target)) {
         DeleteFileW(tmp.c_str());
         return false;
     }

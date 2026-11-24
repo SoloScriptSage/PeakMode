@@ -1,4 +1,5 @@
 #include "ProfileManager.h"
+#include "FileUtil.h"
 #include "Utf8.h"
 #include "../third_party/nlohmann/json.hpp"
 
@@ -197,9 +198,9 @@ bool ProfileManager::save(const Profile& profile, const std::string& jsonPath,
         out.flush();
         if (!out) { error = "write failed: " + jsonPath + ".tmp"; return false; }
     }
-    if (!MoveFileExW(tmp.c_str(), target.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        error = "cannot replace " + jsonPath + " (error " + std::to_string(GetLastError()) + ")";
+    unsigned long code = 0;
+    if (!ReplaceFileRetrying(tmp, target, &code)) {
+        error = "cannot replace " + jsonPath + " (error " + std::to_string(code) + ")";
         DeleteFileW(tmp.c_str());
         return false;
     }
