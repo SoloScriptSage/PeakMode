@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Unit tests for the tray UI logic. They never load PeakModeCore.dll
+       and change nothing on the system: view models run on fake cores,
+       file tests use a temp folder. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- The app is a self-contained exe; the tests only use its classes -->
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PeakModeTray\PeakModeTray.csproj" />
+  </ItemGroup>
+
+  <!-- Read by ContrastTests -->
+  <ItemGroup>
+    <None Include="..\PeakModeTray\Themes\Tokens.xaml" Link="Tokens.xaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
