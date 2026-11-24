@@ -18,7 +18,7 @@
     <Color x:Key="TextColor">#F3F1EC</Color>
     <Color x:Key="TextSoftColor">#D6D3DE</Color>
     <Color x:Key="MutedColor">#A0A6AF</Color>
-    <Color x:Key="FaintColor">#6B7180</Color>
+    <Color x:Key="FaintColor">#767D8D</Color>
     <Color x:Key="DisabledIconColor">#4A4F5C</Color>
     <Color x:Key="AccentColor">#FF3D7F</Color>
     <Color x:Key="AccentSoftColor">#FF8FB5</Color>
