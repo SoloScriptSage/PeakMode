@@ -6,8 +6,10 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
+#include "engine/FileUtil.h"
 #include "engine/Orchestrator.h"
 #include "engine/ProfileManager.h"
 #include "engine/Registry.h"
@@ -145,6 +147,85 @@ static void testSnapshot() {
     Snapshot::setStateDirForTests(L"");
     std::wstring log = dir + L"\\peakmode.log";
     DeleteFileW(log.c_str());
+    RemoveDirectoryW(dir.c_str());
+}
+
+// #5: another process reading snapshot.json (a handle without
+// FILE_SHARE_DELETE) makes the write-then-rename fail. The rename is
+// retried for about half a second; if the reader is still there, the
+// record fails and the caller skips the change, as before.
+static void testSnapshotHeldOpen() {
+    using PeakMode::Snapshot;
+    printf("[selftest] snapshot write while another handle has it open\n");
+
+    wchar_t tmp[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp);
+    std::wstring dir = std::wstring(tmp) + L"peakmode-selftest-held-" +
+                       std::to_wstring(GetCurrentProcessId());
+    CreateDirectoryW(dir.c_str(), nullptr);
+    Snapshot::setStateDirForTests(dir);
+    const std::wstring file = Snapshot::filePath();
+    DeleteFileW(file.c_str());
+    auto holdOpen = [&] {
+        return CreateFileW(file.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    };
+    auto entriesOnDisk = [] {
+        Snapshot::Entry doc;
+        std::string e;
+        return Snapshot::load(doc, e) ? static_cast<int>(doc["entries"].size()) : -1;
+    };
+
+    std::string err;
+    CHECK(Snapshot::begin("held", err));
+    CHECK(Snapshot::record({ { "kind", "t" }, { "id", 1 } }));
+
+    // The premise: a plain rename onto the held file fails
+    HANDLE h = holdOpen();
+    CHECK(h != INVALID_HANDLE_VALUE);
+    {
+        std::wstring probe = dir + L"\\probe.tmp";
+        HANDLE p = CreateFileW(probe.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+        CloseHandle(p);
+        BOOL moved = MoveFileExW(probe.c_str(), file.c_str(), MOVEFILE_REPLACE_EXISTING);
+        DWORD e = GetLastError();
+        CHECK(!moved && (e == ERROR_SHARING_VIOLATION || e == ERROR_ACCESS_DENIED));
+        DeleteFileW(probe.c_str());
+    }
+
+    // Reader closes after 150 ms: the write waits for it and succeeds
+    std::thread closer([h] { Sleep(150); CloseHandle(h); });
+    ULONGLONG t0 = GetTickCount64();
+    CHECK(Snapshot::record({ { "kind", "t" }, { "id", 2 } }));
+    ULONGLONG waited = GetTickCount64() - t0;
+    closer.join();
+    CHECK(waited >= 100);
+    CHECK(entriesOnDisk() == 2);
+
+    // Reader never lets go during the write: record fails, nothing half
+    // written, the change would be skipped; the next write works again
+    h = holdOpen();
+    CHECK(h != INVALID_HANDLE_VALUE);
+    t0 = GetTickCount64();
+    CHECK(!Snapshot::record({ { "kind", "t" }, { "id", 3 } }));
+    waited = GetTickCount64() - t0;
+    CloseHandle(h);
+    CHECK(waited >= 400 && waited < 3000);
+    CHECK(entriesOnDisk() == 2);
+    CHECK(GetFileAttributesW((file + L".tmp").c_str()) == INVALID_FILE_ATTRIBUTES);
+    CHECK(Snapshot::record({ { "kind", "t" }, { "id", 4 } }));
+    CHECK(entriesOnDisk() == 3);
+
+    // Other errors are not retried
+    unsigned long code = 0;
+    int attempts = 0;
+    CHECK(!PeakMode::ReplaceFileRetrying(dir + L"\\missing.tmp", dir + L"\\x.json", &code, &attempts));
+    CHECK(code == ERROR_FILE_NOT_FOUND && attempts == 1);
+
+    auto rep = Snapshot::restoreAll([](const Snapshot::Entry&, std::string&) { return true; });
+    CHECK(rep.ok && rep.restored == 3 && !Snapshot::exists());
+    Snapshot::setStateDirForTests(L"");
+    DeleteFileW((dir + L"\\peakmode.log").c_str());
     RemoveDirectoryW(dir.c_str());
 }
 
@@ -515,6 +596,7 @@ static int runSelftest(const char* configPath) {
     testProfileParsing();
     testShippedConfig(configPath);
     testSnapshot();
+    testSnapshotHeldOpen();
     testSteps();
     testSessions();
     testStateDirAcl();

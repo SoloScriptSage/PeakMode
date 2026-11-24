@@ -5,6 +5,7 @@
 #include <fstream>
 #include <mutex>
 
+#include "FileUtil.h"
 #include "Log.h"
 #include "SessionLog.h"
 #include "Snapshot.h"
@@ -50,9 +51,9 @@ bool append(const json& ev) {
     WIN32_FILE_ATTRIBUTE_DATA fa{};
     if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fa)) {
         ULONGLONG size = (static_cast<ULONGLONG>(fa.nFileSizeHigh) << 32) | fa.nFileSizeLow;
+        // A failed rotation is logged by the helper; appending still goes on
         if (size > g_maxBytes)
-            MoveFileExW(path.c_str(), Snapshot::stateFile(kOldFile).c_str(),
-                        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+            ReplaceFileRetrying(path, Snapshot::stateFile(kOldFile));
     }
     // error_handler::replace: a bad UTF-8 byte in a value must not throw
     std::string line = ev.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";

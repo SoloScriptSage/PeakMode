@@ -77,7 +77,7 @@ The release is self-contained: no .NET runtime needs to be installed. Exiting th
 
 ## Safety and recovery
 
-- **Write-ahead snapshot.** Before each individual change, PeakMode writes the original value to `C:\ProgramData\PeakMode\snapshot.json`. If the write fails, the change is not made. Values that did not exist before are recorded as such and deleted again on restore.
+- **Write-ahead snapshot.** Before each individual change, PeakMode writes the original value to `C:\ProgramData\PeakMode\snapshot.json`. If another program briefly has the file open, the write is retried for about half a second. If the write still fails, the change is not made. Values that did not exist before are recorded as such and deleted again on restore.
 - **Restore works from a fresh process.** Restore uses only the snapshot file, in reverse order. The file is deleted only when every item was restored; failed items stay in it so you can retry.
 - **Crash or reboot while active.** On the next start the tray asks whether to restore the original settings, and the History screen shows a restore banner. Until then the tray shows "restore pending".
 - **Logoff and shutdown.** The tray restores on session end. If Windows ends it first, you get the restore prompt on the next start.
@@ -225,7 +225,7 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 - [#2](https://github.com/SoloScriptSage/PeakMode/issues/2) Snapshot owner is never checked for liveness; a second process can restore a live instance's tweaks
 - [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Active instance does not notice when another process restored its snapshot
 - [#4](https://github.com/SoloScriptSage/PeakMode/issues/4) "Already running" message box can hide behind other windows
-- [#5](https://github.com/SoloScriptSage/PeakMode/issues/5) Snapshot write can fail with a sharing violation when another process has snapshot.json open (the change is then skipped safely)
+- [#5](https://github.com/SoloScriptSage/PeakMode/issues/5) Snapshot write can fail when another process has snapshot.json open: fixed on the 0.2.0 branch with a short retry (self-test covers it); the change is still skipped safely if the file stays locked
 
 ---
 
