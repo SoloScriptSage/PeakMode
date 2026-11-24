@@ -31,7 +31,8 @@ namespace PeakModeTray
             if (Array.IndexOf(e.Args, "--window-preview") >= 0)
             {
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
-                var preview = new MainWindow(CreateMainViewModel(new PreviewCoreService(), PreviewConfig()))
+                var core = new PreviewCoreService(pending: Array.IndexOf(e.Args, "--preview-pending") >= 0);
+                var preview = new MainWindow(CreateMainViewModel(core, PreviewConfig()))
                 {
                     AllowClose = true, Title = "PeakMode (preview, simulated core)",
                 };
@@ -87,7 +88,7 @@ namespace PeakModeTray
             var boost  = new ViewModels.BoostViewModel(core, configPath);
             var tweaks = new ViewModels.TweaksViewModel(core, store);
             store.Changed += boost.ProfileChanged;
-            return new ViewModels.MainViewModel(boost, tweaks);
+            return new ViewModels.MainViewModel(boost, tweaks, new ViewModels.HistoryViewModel(core));
         }
 
 #if DEBUG
