@@ -28,6 +28,8 @@
   <!-- Read by ContrastTests -->
   <ItemGroup>
     <None Include="..\PeakModeTray\Themes\Tokens.xaml" Link="Tokens.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Read by AccessibilityTests -->
+    <None Include="..\PeakModeTray\MainWindow.xaml" Link="MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
