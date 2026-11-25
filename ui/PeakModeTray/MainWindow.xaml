@@ -5,7 +5,8 @@
         xmlns:vm="clr-namespace:PeakModeTray.ViewModels"
         Title="PeakMode" Width="1180" Height="860" MinWidth="1100" MinHeight="720"
         Background="{StaticResource DotGridBrush}" WindowStartupLocation="CenterScreen"
-        TextOptions.TextFormattingMode="Ideal">
+        TextOptions.TextFormattingMode="Ideal"
+        FocusManager.FocusedElement="{Binding ElementName=NavBoost}">
     <Window.Resources>
         <!-- Status tag on a module card -->
         <Style x:Key="StatusTagBorder" TargetType="Border" BasedOn="{StaticResource TagBorder}">
@@ -162,7 +163,7 @@
                     </StackPanel>
                 </Border>
                 <StackPanel>
-                    <RadioButton Style="{StaticResource NavItem}" Content="Boost" Tag="{x:Static vm:Icons.Boost}"
+                    <RadioButton x:Name="NavBoost" Style="{StaticResource NavItem}" Content="Boost" Tag="{x:Static vm:Icons.Boost}"
                                  IsChecked="True" GroupName="nav" AutomationProperties.Name="Boost"
                                  Checked="OnNavBoost" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Tweaks" Tag="{x:Static vm:Icons.Tweaks}"
@@ -346,7 +347,9 @@
                                         <ToggleButton DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}"
                                                       VerticalAlignment="Top"
                                                       IsChecked="{Binding Included, Mode=OneWay}" IsEnabled="False"
-                                                      AutomationProperties.Name="{Binding SwitchName}" />
+                                                      AutomationProperties.Name="{Binding SwitchName}"
+                                                      AutomationProperties.ItemStatus="{Binding Status}"
+                                                      AutomationProperties.HelpText="{Binding Detail}" />
                                     <WrapPanel>
                                         <Border Style="{StaticResource StatusTagBorder}" Margin="0,0,6,4">
                                             <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTagText}" />
@@ -574,11 +577,11 @@
                                             </StackPanel.Style>
                                             <TextBlock Text="Target process" Style="{StaticResource MutedText}" FontSize="12" />
                                             <TextBox Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                     Style="{StaticResource InputBox}"
                                                      IsEnabled="{Binding CanEdit}" Width="320" HorizontalAlignment="Left"
-                                                     Margin="0,6,0,0" Padding="10,8" FontFamily="{StaticResource MonoFont}" FontSize="13"
-                                                     Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
-                                                     BorderBrush="{StaticResource BorderStrongBrush}" CaretBrush="{StaticResource TextBrush}"
-                                                     AutomationProperties.Name="Target process exe name, for example game.exe" />
+                                                     Margin="0,6,0,0"
+                                                     AutomationProperties.Name="Target process exe name, for example game.exe"
+                                                     AutomationProperties.HelpText="{Binding TargetError}" />
                                             <TextBlock Text="{Binding TargetError}" Style="{StaticResource BodyText}" FontSize="12"
                                                        Foreground="{StaticResource AmberBrush}" Margin="0,4,0,0" />
                                         </StackPanel>
