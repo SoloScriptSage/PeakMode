@@ -67,3 +67,6 @@ desktop.ini
 
 # Local test output
 test-results/
+
+# Local research notes (not committed for now)
+research/
