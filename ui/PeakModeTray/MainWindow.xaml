@@ -16,6 +16,9 @@
                 <DataTrigger Binding="{Binding IsLive}" Value="True">
                     <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding IsWarn}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AmberBorderBrush}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="StatusTagText" TargetType="TextBlock" BasedOn="{StaticResource TagText}">
@@ -24,6 +27,9 @@
                     <Setter Property="Foreground" Value="{StaticResource AccentSoftBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsLive}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsWarn}" Value="True">
                     <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
                 </DataTrigger>
             </Style.Triggers>
@@ -44,6 +50,9 @@
                 <DataTrigger Binding="{Binding IsLive}" Value="True">
                     <Setter Property="Background" Value="{StaticResource SurfaceHotBrush}" />
                     <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsWarn}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AmberBorderBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Included}" Value="False">
                     <Setter Property="Opacity" Value="0.5" />

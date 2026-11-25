@@ -229,7 +229,7 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 - [#1](https://github.com/SoloScriptSage/PeakMode/issues/1) Snapshot::begin: check-then-create race can overwrite another process's snapshot
 - [#2](https://github.com/SoloScriptSage/PeakMode/issues/2) Snapshot owner is never checked for liveness; a second process can restore a live instance's tweaks
 - [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Active instance does not notice when another process restored its snapshot
-- [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Windows Search can restart within seconds of being stopped, so that tweak may not last for the whole boost (restore is unaffected)
+- [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Windows Search can restart within seconds of being stopped, so that tweak may not last for the whole boost (restore is unaffected). Since 0.2.1 the Background services card shows RESTARTED and names the service instead of APPLIED; the service is still not kept stopped
 
 Fixed in 0.2.1:
 
@@ -257,7 +257,7 @@ Fixed in 0.2.0:
 Make every tweak that shows APPLIED actually hold for the whole boost, and add only what the documentation supports ([tweak verdicts](docs/tweak-verdicts.md)):
 
 - [ ] Timer resolution: confirm whether the request reaches other processes (`scripts/timer-resolution-check.ps1`); drop or relabel the tweak if it doesn't
-- [ ] [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Show a service that Windows restarted during the boost instead of APPLIED
+- [ ] [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Confirm on a real boost that the Background services card shows RESTARTED (added in 0.2.1), and decide whether to keep WSearch stopped or turn `disableSearchIndex` off by default
 - [ ] [#1](https://github.com/SoloScriptSage/PeakMode/issues/1), [#2](https://github.com/SoloScriptSage/PeakMode/issues/2), [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Snapshot ownership between processes
 - [ ] New tweaks rated ADD: processor boost mode Aggressive and energy performance preference 0, on the active power plan, journaled and restored
 - [ ] Before/after measurement for the default-on tweaks rated OPT-IN (Ultimate Performance plan, SysMain), and change the defaults if they don't help
