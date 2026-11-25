@@ -1,0 +1,55 @@
+name: Bug report
+description: Something went wrong while activating, restoring or using the app
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If your settings are still changed after a failed restore, see
+        [RECOVERY.md](https://github.com/SoloScriptSage/PeakMode/blob/main/scripts/RECOVERY.md) first.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: restore
+    attributes:
+      label: Did restore put everything back?
+      options:
+        - "Yes"
+        - "No, some settings are still changed"
+        - "Did not get as far as restore"
+        - "Not sure"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PeakMode version
+      description: Shown on the Settings screen, for example v0.2.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and build
+      description: For example Windows 11 Pro 23H2 (22631). Run `winver` to see it.
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: CPU, GPU and network adapter
+      description: For example Ryzen 7 4800H, RTX 3050 Ti Laptop, Realtek RTL8168
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        The relevant part of `C:\ProgramData\PeakMode\peakmode.log` (Settings → Log → OPEN) and,
+        if the problem is about restore, `sessions.jsonl` from the same folder.
+        Check for anything you don't want to share before pasting.
+      render: text
