@@ -17,7 +17,8 @@ namespace PeakModeTray.ViewModels
 
         public int    Step   { get; }
         public string Name   { get; }
-        public string Detail { get; set; }
+        private string _detail = "";
+        public string Detail { get => _detail; set => Set(ref _detail, value); }
         public string Icon   { get; }
         public bool   Warn   { get; }
 
@@ -26,10 +27,20 @@ namespace PeakModeTray.ViewModels
         public bool ShowWarn => Warn && Included;
 
         private string _status = "READY";
-        // READY, QUEUED, APPLYING, APPLIED, NO CHANGE, FAILED, RESTORING, RESTORED, SKIPPED
-        public string Status { get => _status; set { if (Set(ref _status, value)) { OnPropertyChanged(nameof(IsLive)); OnPropertyChanged(nameof(IsHot)); } } }
+        // READY, QUEUED, APPLYING, APPLIED, RESTARTED, NO CHANGE, FAILED, RESTORING, RESTORED, SKIPPED
+        public string Status
+        {
+            get => _status;
+            set
+            {
+                if (!Set(ref _status, value)) return;
+                OnPropertyChanged(nameof(IsLive)); OnPropertyChanged(nameof(IsHot)); OnPropertyChanged(nameof(IsWarn));
+            }
+        }
         public bool IsLive => Status is "APPLYING" or "RESTORING";
         public bool IsHot  => Status == "APPLIED";
+        // Applied, but Windows undid part of it during the boost (#7)
+        public bool IsWarn => Status == "RESTARTED";
         public string SwitchName => (Included ? "Included: " : "Skipped: ") + Name;
     }
 
@@ -58,7 +69,7 @@ namespace PeakModeTray.ViewModels
             new(PeakModeCore.StepTimer,     "Timer resolution",    "default → 0.5 ms while active", Icons.Timer,   false),
             new(PeakModeCore.StepPower,     "Power plan",          "→ High or Ultimate performance", Icons.Power,  false),
             new(PeakModeCore.StepNagle,     "Nagle off",           "TcpAckFrequency, TCPNoDelay = 1", Icons.Net,    false),
-            new(PeakModeCore.StepServices,  "Background services", "SysMain, WSearch stopped",       Icons.Services, false),
+            new(PeakModeCore.StepServices,  "Background services", ServicesDetail,                   Icons.Services, false),
             new(PeakModeCore.StepNvidia,    "NVIDIA driver",       "4 driver profile settings",      Icons.Gpu,     false),
             new(PeakModeCore.StepInterrupt, "Interrupts and NIC",  "IRQ affinity, adapter properties", Icons.Irq,   true),
         };
@@ -74,14 +85,20 @@ namespace PeakModeTray.ViewModels
         // simulated readers because it changes nothing on the system.
         private readonly Func<string> _powerPlan;
         private readonly Func<double> _timerMs;
+        private readonly Func<string, bool> _serviceRunning;
+
+        private const string ServicesDetail = "SysMain, WSearch stopped";
+        private ModuleCardViewModel ServicesCard => Modules.First(m => m.Step == PeakModeCore.StepServices);
 
         public BoostViewModel(ICoreService core, string? configPath,
-                              Func<string>? powerPlan = null, Func<double>? timerMs = null)
+                              Func<string>? powerPlan = null, Func<double>? timerMs = null,
+                              Func<string, bool>? serviceRunning = null)
         {
             _core = core;
             _configPath = configPath;
             _powerPlan = powerPlan ?? SystemInfo.ActivePowerPlanName;
             _timerMs   = timerMs   ?? SystemInfo.TimerResolutionMs;
+            _serviceRunning = serviceRunning ?? SystemInfo.ServiceRunning;
             ToggleCommand = new RelayCommand(Toggle, () => !_core.IsBusy);
             _core.Progress     += OnProgress;
             _core.StateChanged += OnStateChanged;
@@ -189,6 +206,7 @@ namespace PeakModeTray.ViewModels
                     RefreshStats();
                     break;
                 case PeakModeCore.EvRestoreBegin:
+                    StopServiceWatch();
                     _restoring = true;
                     _restoreTotal = Math.Max(p.Entries, 1);
                     _restored = 0;
@@ -206,7 +224,7 @@ namespace PeakModeTray.ViewModels
                     break;
                 case PeakModeCore.EvDone:
                     if (_restoring)
-                        foreach (var m in Modules.Where(m => m.Status is "RESTORING" or "APPLIED"))
+                        foreach (var m in Modules.Where(m => m.Status is "RESTORING" or "APPLIED" or "RESTARTED"))
                             m.Status = "RESTORED";
                     _restoring = false;
                     break;
@@ -219,6 +237,7 @@ namespace PeakModeTray.ViewModels
             _applied = 0;
             _enabledSteps = Math.Max(1, Modules.Count(m => m.Included));
             foreach (var m in Modules) m.Status = m.Included ? "QUEUED" : "SKIPPED";
+            ServicesCard.Detail = ServicesDetail;
             Progress = 0;
             Mode = GaugeMode.Applying;
             RaiseCounter();
@@ -241,12 +260,16 @@ namespace PeakModeTray.ViewModels
                     Progress = 1;
                     foreach (var m in Modules.Where(m => m.Status is "QUEUED" or "APPLYING" or "READY" && m.Included))
                         m.Status = "APPLIED";
+                    StartServiceWatch();
                     break;
                 case PeakModeCore.StateRestorePending:
+                    StopServiceWatch();
                     Mode = GaugeMode.RestorePending;
                     Progress = 0;
                     break;
                 default:
+                    StopServiceWatch();
+                    ServicesCard.Detail = ServicesDetail;
                     Mode = GaugeMode.Idle;
                     Progress = 0;
                     _applied = 0;
@@ -333,6 +356,62 @@ namespace PeakModeTray.ViewModels
             OnPropertyChanged(nameof(Modules));
         }
 
+        // ── services Windows restarted during the boost (#7) ─────────────────
+        // Windows (or a program asking the indexer for something) can start a
+        // stopped service again within seconds. Restore is unaffected, but the
+        // card must not claim APPLIED for a service that is running. Read-only:
+        // this only queries service state.
+        private System.Windows.Threading.DispatcherTimer? _serviceTimer;
+        private string[] _watchedServices = Array.Empty<string>();
+        internal static readonly TimeSpan ServiceCheckInterval = TimeSpan.FromSeconds(5);
+
+        private void StartServiceWatch()
+        {
+            _watchedServices = StoppedServicesThisSession();
+            CheckServices();
+            if (_watchedServices.Length == 0 || _serviceTimer != null) return;
+            _serviceTimer = new System.Windows.Threading.DispatcherTimer { Interval = ServiceCheckInterval };
+            _serviceTimer.Tick += (_, _) => CheckServices();
+            _serviceTimer.Start();
+        }
+
+        private void StopServiceWatch()
+        {
+            _serviceTimer?.Stop();
+            _serviceTimer = null;
+            _watchedServices = Array.Empty<string>();
+        }
+
+        internal void CheckServices()
+        {
+            if (Mode != GaugeMode.Active || _watchedServices.Length == 0) return;
+            var card = ServicesCard;
+            if (card.Status is not ("APPLIED" or "RESTARTED")) return;
+            var running = _watchedServices.Where(_serviceRunning).ToArray();
+            if (running.Length == 0) return;   // once restarted, the card keeps saying so
+            card.Status = "RESTARTED";
+            card.Detail = $"{string.Join(", ", running)} running again: Windows restarted {(running.Length == 1 ? "it" : "them")}. Restore is unaffected.";
+        }
+
+        // Services the current session stopped: "service" entries of the
+        // newest "active" event in the session log.
+        private string[] StoppedServicesThisSession()
+        {
+            try
+            {
+                var events = JsonNode.Parse(_core.ReadSessions()) as JsonArray;
+                var active = events?.LastOrDefault(e => (string?)e?["type"] == "active");
+                return ((active?["entries"] as JsonArray) ?? new JsonArray())
+                    .Where(e => (string?)e?["kind"] == "service" && e?["wasRunning"] is JsonValue v &&
+                                v.TryGetValue(out bool b) && b)
+                    .Select(e => (string?)e!["name"] ?? "")
+                    .Where(n => n.Length > 0)
+                    .Distinct()
+                    .ToArray();
+            }
+            catch (Exception) { return Array.Empty<string>(); }
+        }
+
         // Entries in the last completed activation of this profile (0 = none yet)
         private int LastSessionTotal()
         {
@@ -392,5 +471,35 @@ namespace PeakModeTray.ViewModels
 
         public static double TimerResolutionMs() =>
             NtQueryTimerResolution(out _, out _, out uint cur) == 0 ? cur / 10000.0 : 0;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SERVICE_STATUS
+        {
+            public uint Type, CurrentState, ControlsAccepted, Win32ExitCode, SpecificExitCode, CheckPoint, WaitHint;
+        }
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr OpenSCManagerW(string? machine, string? database, uint access);
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr OpenServiceW(IntPtr scm, string name, uint access);
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool QueryServiceStatus(IntPtr svc, out SERVICE_STATUS status);
+        [DllImport("advapi32.dll")]
+        private static extern bool CloseServiceHandle(IntPtr h);
+
+        // Running or starting. Query access only; false if it can't be read.
+        public static bool ServiceRunning(string name)
+        {
+            const uint ScManagerConnect = 0x1, ServiceQueryStatus = 0x4, StartPending = 2, Running = 4;
+            IntPtr scm = OpenSCManagerW(null, null, ScManagerConnect);
+            if (scm == IntPtr.Zero) return false;
+            try
+            {
+                IntPtr svc = OpenServiceW(scm, name, ServiceQueryStatus);
+                if (svc == IntPtr.Zero) return false;
+                try { return QueryServiceStatus(svc, out var s) && s.CurrentState is Running or StartPending; }
+                finally { CloseServiceHandle(svc); }
+            }
+            finally { CloseServiceHandle(scm); }
+        }
     }
 }

@@ -33,8 +33,12 @@ namespace PeakModeTray
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
                 var core = new PreviewCoreService(pending: Array.IndexOf(e.Args, "--preview-pending") >= 0);
                 bool On() => core.State == PeakModeTray.PeakModeCore.StateActive;
+                // The preview never stops real services, so it can't read them:
+                // --preview-restarted simulates Windows restarting WSearch (#7)
+                bool restarted = Array.IndexOf(e.Args, "--preview-restarted") >= 0;
                 var preview = new MainWindow(CreateMainViewModel(core, PreviewConfig(),
-                    () => On() ? "High performance" : "Balanced", () => On() ? 0.5 : 15.625))
+                    () => On() ? "High performance" : "Balanced", () => On() ? 0.5 : 15.625,
+                    name => restarted && name == "WSearch"))
                 {
                     AllowClose = true, Title = "PeakMode (preview, simulated core)",
                 };
@@ -94,10 +98,10 @@ namespace PeakModeTray
         }
 
         private static ViewModels.MainViewModel CreateMainViewModel(ICoreService core, string? configPath,
-            Func<string>? powerPlan = null, Func<double>? timerMs = null)
+            Func<string>? powerPlan = null, Func<double>? timerMs = null, Func<string, bool>? serviceRunning = null)
         {
             var store  = new ProfileStore(configPath);
-            var boost  = new ViewModels.BoostViewModel(core, configPath, powerPlan, timerMs);
+            var boost  = new ViewModels.BoostViewModel(core, configPath, powerPlan, timerMs, serviceRunning);
             var tweaks = new ViewModels.TweaksViewModel(core, store);
             store.Changed += boost.ProfileChanged;
             var settings = new ViewModels.SettingsViewModel(VersionText(), configPath, TrayApp.LogPath,
