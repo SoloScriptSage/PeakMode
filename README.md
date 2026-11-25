@@ -167,7 +167,7 @@ core/build/Release/peakmode_test.exe selftest config/peakmode.json
 dotnet test ui/PeakModeTray.Tests -c Release
 
 # Release zip in dist\ (same script CI uses)
-./scripts/package.ps1 -Version 0.2.0 -CoreDll core/build/Release/PeakModeCore.dll
+./scripts/package.ps1 -Version 0.2.1 -CoreDll core/build/Release/PeakModeCore.dll
 ```
 
 A Debug build of the tray has a preview mode for UI work: `PeakModeTray.exe --window-preview` opens the main window on a simulated core with sample history and changes nothing on the system (it edits a copy of the config in `%TEMP%`). Add `--preview-pending` to start with a leftover session and the restore banner.
@@ -221,6 +221,11 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | UI unit tests (History parsing, ProfileStore, token contrast) | Yes (81 pass) | | Locally and in [run 45335283270](https://github.com/SoloScriptSage/PeakMode/actions/runs/45335283270) on windows-latest (pull request #6) |
 | 0.2.0 CI build zip (0.2.0-dev.7, same code as v0.2.0): activate and restore with the Boost gauge | Yes | Yes | 19 snapshot entries; all 41 captured values identical after restore; session log `reason=window`, `ok`, 19 restored, 0 failed. Windows Search was running again within seconds of being stopped ([#7](https://github.com/SoloScriptSage/PeakMode/issues/7)); restore was unaffected |
 | v0.2.0 release zip as downloaded from the release page | **Untested** | | Built and published by [run 45337581887](https://github.com/SoloScriptSage/PeakMode/actions/runs/45337581887) |
+| 0.2.1: UI unit tests (adds Settings, cut corners, letter spacing, service restart, accessibility checks) | Yes (107 pass) | | Locally; no system changes |
+| 0.2.1: Settings screen, cut corners and letter spacing in the real window | **Untested** | | Built and unit-tested only; letter spacing also checked in an off-screen render |
+| 0.2.1: "Already running" box in front with a second instance ([#4](https://github.com/SoloScriptSage/PeakMode/issues/4)) | **Untested** | | |
+| 0.2.1: Background services card shows RESTARTED on a real boost ([#7](https://github.com/SoloScriptSage/PeakMode/issues/7)) | **Untested** | | Fake core and service reader in tests; the real service query is tested read-only |
+| 0.2.1: `scripts/timer-resolution-check.ps1` while PeakMode is active | **Untested** | | Dry run idle: Sleep(1) median 15.8 ms; with its own 1 ms request 1.1 ms |
 
 ---
 
