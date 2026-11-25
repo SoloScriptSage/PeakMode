@@ -49,8 +49,17 @@ namespace PeakModeTray
             _singleInstance = new Mutex(true, @"Global\PeakModeTray", out bool isFirst);
             if (!isFirst)
             {
-                MessageBox.Show("PeakMode is already running (see the tray).", "PeakMode",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // A hidden topmost owner keeps the box in front of whatever has
+                // focus; without an owner it could open behind other windows and
+                // leave this second process running unseen (#4).
+                using (var owner = new Form { TopMost = true, ShowInTaskbar = false, Opacity = 0,
+                                              StartPosition = FormStartPosition.CenterScreen })
+                {
+                    owner.Show();
+                    owner.Activate();
+                    MessageBox.Show(owner, "PeakMode is already running (see the tray).", "PeakMode",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
                 Shutdown();
                 return;
             }
