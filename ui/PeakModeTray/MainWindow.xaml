@@ -35,6 +35,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="14,12" />
             <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="c:CutCorners.TopRight" Value="14" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsHot}" Value="True">
                     <Setter Property="Background" Value="{StaticResource SurfaceHotBrush}" />
@@ -54,6 +55,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="16,6" />
+            <Setter Property="c:CutCorners.TopRight" Value="14" />
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <!-- History: session badge (CLEAN green, ACTIVE pink, others amber) -->
@@ -143,7 +145,7 @@
                                Foreground="{StaticResource TextBrush}" />
                 </StackPanel>
                 <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                        CornerRadius="8" Padding="12">
+                        Padding="12" c:CutCorners.TopRight="12">
                     <StackPanel>
                         <TextBlock x:Name="VersionText" Style="{StaticResource MonoText}" Foreground="{StaticResource TextBrush}" />
                         <TextBlock Text="Free and open source. No account, no limits." Style="{StaticResource MutedText}"
@@ -223,7 +225,8 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" Padding="16,14">
+                            BorderThickness="1" Padding="16,14"
+                            c:CutCorners.TopRight="28" c:CutCorners.BottomLeft="28">
                         <!-- Gauge scales with the space it gets, up to 290 px. Counter
                              and hint go under it, or beside it when that gives a bigger
                              gauge (wide, short card); see OnHeroSizeChanged. -->
@@ -417,7 +420,7 @@
                 <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="0,0,0,10" Padding="16,14" BorderThickness="1">
+                            <Border Margin="0,0,0,10" Padding="16,14" BorderThickness="1" c:CutCorners.TopRight="14">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
@@ -594,7 +597,7 @@
 
             <!-- Restore-pending banner -->
             <Border Grid.Row="1" Margin="0,20,12,0" Padding="20,18" Background="{StaticResource AmberBgBrush}"
-                    BorderBrush="{StaticResource AmberBorderBrush}" BorderThickness="1"
+                    BorderBrush="{StaticResource AmberBorderBrush}" BorderThickness="1" c:CutCorners.TopRight="16"
                     Visibility="{Binding ShowBanner, Converter={StaticResource BoolToVis}}">
                 <DockPanel>
                     <Path DockPanel.Dock="Left" Data="M12,3 L22,21 L2,21 Z M12,10 L12,15 M12,18 L12.01,18" Width="26" Height="26"
@@ -650,7 +653,7 @@
                 </ScrollViewer>
 
                 <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" Padding="22" DataContext="{Binding Selected}">
+                        BorderThickness="1" Padding="22" DataContext="{Binding Selected}" c:CutCorners.TopRight="22">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top">
                             <TextBlock Text="{Binding DetailTitle}" Style="{StaticResource H2Text}" FontSize="22" />

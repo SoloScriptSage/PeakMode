@@ -35,7 +35,10 @@ labels, values and tags (uppercase, letter spacing 1 to 2 px). All three are OFL
 bundle them with the app and add their licenses to third-party notices.
 
 Shape language: cards have one or two cut corners (top right, sometimes bottom left),
-not rounded corners. Switches are pill shaped.
+not rounded corners. Switches are pill shaped. In WPF: `c:CutCorners.TopRight` /
+`c:CutCorners.BottomLeft` (Controls/CutCorners.cs), a clip like the mockups' `clip-path`.
+Sizes from the mockups: hero 28 + 28, history detail 22, banner 16, module and stat
+cards and tweak rows 14, sidebar version box 12.
 
 ## Screen 1: Boost
 
