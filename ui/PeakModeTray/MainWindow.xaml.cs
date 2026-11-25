@@ -17,8 +17,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
-        var v = Assembly.GetExecutingAssembly().GetName().Version;
-        VersionText.Text = v == null ? "PeakMode" : $"v{v.Major}.{v.Minor}.{v.Build}";
+        VersionText.Text = App.VersionText();
     }
 
     internal bool AllowClose { get; set; }
@@ -31,10 +30,20 @@ public partial class MainWindow : Window
         (DataContext as ViewModels.MainViewModel)?.History.Refresh();
         ShowPage(HistoryPage);
     }
+    private void OnNavSettings(object sender, RoutedEventArgs e)
+    {
+        // Config and log may have appeared since the window opened
+        if (DataContext is ViewModels.MainViewModel m)
+        {
+            m.Settings.OpenConfigCommand.Refresh();
+            m.Settings.OpenLogCommand.Refresh();
+        }
+        ShowPage(SettingsPage);
+    }
     private void ShowPage(FrameworkElement? page)
     {
-        if (page == null || BoostPage == null || TweaksPage == null || HistoryPage == null) return;
-        foreach (var p in new FrameworkElement[] { BoostPage, TweaksPage, HistoryPage })
+        if (page == null || BoostPage == null || TweaksPage == null || HistoryPage == null || SettingsPage == null) return;
+        foreach (var p in new FrameworkElement[] { BoostPage, TweaksPage, HistoryPage, SettingsPage })
             p.Visibility = p == page ? Visibility.Visible : Visibility.Collapsed;
     }
 

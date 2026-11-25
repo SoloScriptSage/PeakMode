@@ -25,7 +25,7 @@ namespace PeakModeTray
         private readonly Action            _shutdown;
         private bool _exiting;
 
-        private static readonly string StateDir = Path.Combine(
+        internal static readonly string StateDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PeakMode");
 
         private readonly Action _openWindow;
@@ -215,8 +215,22 @@ namespace PeakModeTray
         private static void OpenPath(string? path)
         {
             if (path == null || !File.Exists(path)) return;
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            ShellOpen(path);
         }
+
+        // A file in its default app, a URL in the browser. Never throws:
+        // a missing file association is not worth crashing the tray for.
+        internal static void ShellOpen(string target)
+        {
+            try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                MessageBox.Show($"Could not open {target}\n\n{ex.Message}", "PeakMode",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        internal static string LogPath => Path.Combine(StateDir, "peakmode.log");
 
         // Release layout: <exe dir>\config\peakmode.json
         // Dev layout: walk up from bin\Release\net8.0-windows\... to the repo's config\

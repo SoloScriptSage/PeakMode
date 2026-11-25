@@ -91,7 +91,15 @@ namespace PeakModeTray
             var boost  = new ViewModels.BoostViewModel(core, configPath, powerPlan, timerMs);
             var tweaks = new ViewModels.TweaksViewModel(core, store);
             store.Changed += boost.ProfileChanged;
-            return new ViewModels.MainViewModel(boost, tweaks, new ViewModels.HistoryViewModel(core));
+            var settings = new ViewModels.SettingsViewModel(VersionText(), configPath, TrayApp.LogPath,
+                AppContext.BaseDirectory, TrayApp.ShellOpen);
+            return new ViewModels.MainViewModel(boost, tweaks, new ViewModels.HistoryViewModel(core), settings);
+        }
+
+        internal static string VersionText()
+        {
+            var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return v == null ? "PeakMode" : $"v{v.Major}.{v.Minor}.{v.Build}";
         }
 
 #if DEBUG
