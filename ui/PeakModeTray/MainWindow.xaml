@@ -159,7 +159,7 @@
                     <RadioButton Style="{StaticResource NavItem}" Content="History" Tag="{x:Static vm:Icons.History}"
                                  GroupName="nav" AutomationProperties.Name="History" Checked="OnNavHistory" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Settings" Tag="{x:Static vm:Icons.Settings}"
-                                 GroupName="nav" IsEnabled="False" AutomationProperties.Name="Settings (coming)" />
+                                 GroupName="nav" AutomationProperties.Name="Settings" Checked="OnNavSettings" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -740,5 +740,77 @@
                 </Border>
             </Grid>
         </Grid>
+
+        <!-- Settings screen: about, files, licenses -->
+        <ScrollViewer x:Name="SettingsPage" Grid.Column="1" Margin="36,24,24,24" DataContext="{Binding Settings}"
+                      Visibility="Collapsed" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="0,0,12,0" MaxWidth="760" HorizontalAlignment="Left">
+                <TextBlock Text="ABOUT AND FILES" Style="{StaticResource EyebrowText}" />
+                <TextBlock Text="SETTINGS" Style="{StaticResource H1Text}" Margin="0,4,0,20" />
+
+                <Border Style="{StaticResource StatCard}" Padding="20,16">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="GITHUB"
+                                VerticalAlignment="Center" Command="{Binding OpenGitHubCommand}"
+                                AutomationProperties.Name="Open the PeakMode project on GitHub" />
+                        <StackPanel>
+                            <TextBlock Text="VERSION" Style="{StaticResource LabelText}" />
+                            <TextBlock Text="{Binding Version}" Style="{StaticResource StatValueText}" FontSize="24" Margin="0,3,0,2" />
+                            <TextBlock Text="Free and open source under the MIT license." Style="{StaticResource MutedText}" FontSize="12" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <Border Style="{StaticResource StatCard}" Padding="20,16" Margin="0,12,0,0">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="OPEN"
+                                VerticalAlignment="Center" Command="{Binding OpenConfigCommand}"
+                                AutomationProperties.Name="Open the config file" />
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="CONFIG" Style="{StaticResource LabelText}" />
+                            <TextBlock Text="{Binding ConfigText}" Style="{StaticResource MonoText}" Foreground="{StaticResource TextBrush}"
+                                       Margin="0,4,0,2" />
+                            <TextBlock Text="The profile the Tweaks screen edits. Changes apply on the next boost."
+                                       Style="{StaticResource MutedText}" FontSize="12" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <Border Style="{StaticResource StatCard}" Padding="20,16" Margin="0,12,0,0">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="OPEN"
+                                VerticalAlignment="Center" Command="{Binding OpenLogCommand}"
+                                AutomationProperties.Name="Open the log file" />
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="LOG" Style="{StaticResource LabelText}" />
+                            <TextBlock Text="{Binding LogPath}" Style="{StaticResource MonoText}" Foreground="{StaticResource TextBrush}"
+                                       Margin="0,4,0,2" />
+                            <TextBlock Text="Written by the core on every boost and restore. Readable by administrators only."
+                                       Style="{StaticResource MutedText}" FontSize="12" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <TextBlock Text="LICENSES" Style="{StaticResource H2Text}" Margin="0,28,0,12" />
+                <ItemsControl ItemsSource="{Binding Licenses}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:LicenseItem}">
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="VIEW"
+                                            Padding="12,6" Command="{Binding Open}"
+                                            AutomationProperties.Name="{Binding AutomationName}" />
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Style="{StaticResource MonoText}"
+                                               VerticalAlignment="Center" Margin="0,0,16,0" />
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource FaintText}" Margin="0,10,0,0"
+                           Text="License files ship next to PeakModeTray.exe in the release zip. VIEW is off when a file is missing, as in a developer build." />
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

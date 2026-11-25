@@ -269,12 +269,14 @@ namespace PeakModeTray.ViewModels
     // Main window: the pages
     internal sealed class MainViewModel
     {
-        public MainViewModel(BoostViewModel boost, TweaksViewModel tweaks, HistoryViewModel history)
+        public MainViewModel(BoostViewModel boost, TweaksViewModel tweaks, HistoryViewModel history,
+            SettingsViewModel settings)
         {
-            Boost = boost; Tweaks = tweaks; History = history;
+            Boost = boost; Tweaks = tweaks; History = history; Settings = settings;
         }
-        public BoostViewModel   Boost   { get; }
-        public TweaksViewModel  Tweaks  { get; }
-        public HistoryViewModel History { get; }
+        public BoostViewModel    Boost    { get; }
+        public TweaksViewModel   Tweaks   { get; }
+        public HistoryViewModel  History  { get; }
+        public SettingsViewModel Settings { get; }
     }
 }
