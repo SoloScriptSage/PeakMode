@@ -32,7 +32,9 @@ Live mockup (owner only): https://claude.ai/artifact/EzmNk9XcEjQ536qb5nwC44
 
 Fonts: Chakra Petch 700 for headings and big numbers, Inter for body, JetBrains Mono for
 labels, values and tags (uppercase, letter spacing 1 to 2 px). All three are OFL licensed;
-bundle them with the app and add their licenses to third-party notices.
+bundle them with the app and add their licenses to third-party notices. WPF has no letter
+spacing: `c:Tracking.Spacing` (Controls/Tracking.cs) shifts each character with a TextEffect,
+for single-line text only. Tags 1 px (10 px text), labels 1.5 px (11 px), eyebrows 2 px (12 px).
 
 Shape language: cards have one or two cut corners (top right, sometimes bottom left),
 not rounded corners. Switches are pill shaped. In WPF: `c:CutCorners.TopRight` /
