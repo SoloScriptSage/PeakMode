@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Settings still changed after a failed restore
+    url: https://github.com/SoloScriptSage/PeakMode/blob/main/scripts/RECOVERY.md
+    about: Manual recovery steps, before opening an issue.

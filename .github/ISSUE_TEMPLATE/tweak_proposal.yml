@@ -1,0 +1,43 @@
+name: Tweak proposal
+description: Suggest a setting PeakMode should change during a boost
+labels: [tweak]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [docs/tweak-verdicts.md](https://github.com/SoloScriptSage/PeakMode/blob/main/docs/tweak-verdicts.md)
+        first. A tweak needs vendor documentation, must be reversible without a reboot, and must not
+        reduce security (see [CONTRIBUTING.md](https://github.com/SoloScriptSage/PeakMode/blob/main/CONTRIBUTING.md)).
+  - type: input
+    id: name
+    attributes:
+      label: Tweak
+      description: For example "Processor performance boost mode = Aggressive"
+    validations:
+      required: true
+  - type: textarea
+    id: mechanism
+    attributes:
+      label: What exactly it changes
+      description: Registry path and value, power setting GUID, service name, driver API setting, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Vendor documentation
+      description: Links to Microsoft, NVIDIA or AMD documentation for what it does and how it is set. Videos and forum posts are welcome as context but are not enough on their own.
+    validations:
+      required: true
+  - type: textarea
+    id: restore
+    attributes:
+      label: How it is restored
+      description: How the original value is read, and whether it can be put back without a reboot.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Measured effect (if any)
+      description: Before/after numbers, the game, the hardware and how you measured.
