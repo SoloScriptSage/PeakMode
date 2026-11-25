@@ -34,6 +34,8 @@ Every change is recorded on disk before it is made, so PeakMode can put your sys
 - Routes the Ethernet adapter's interrupts away from CPU core 0
 - Turns off interrupt moderation, Energy Efficient Ethernet, power saving and Wake-on-LAN on the adapter
 
+**Which tweaks, and why not others.** [docs/tweak-verdicts.md](docs/tweak-verdicts.md) checks the tweaks that popular "Windows tweaks for gaming" videos recommend against Microsoft, NVIDIA and AMD documentation, with a source for every verdict. It also lists what that check found about PeakMode itself: the timer resolution request probably no longer reaches the game on Windows 10 2004 and later, and the power plan and SysMain tweaks still need a before/after measurement.
+
 ### Why interrupt tweaks are off by default
 
 Adapter settings only take effect after the adapter restarts, so with `interruptTweaks` enabled PeakMode **disables and re-enables your Ethernet adapter on activate and again on restore**. Your connection drops for a few seconds each time, and anything online (a game lobby, a call, a download) may disconnect. Turn it on only if that is acceptable. Wi-Fi adapters are never touched.
@@ -170,6 +172,8 @@ dotnet test ui/PeakModeTray.Tests -c Release
 
 A Debug build of the tray has a preview mode for UI work: `PeakModeTray.exe --window-preview` opens the main window on a simulated core with sample history and changes nothing on the system (it edits a copy of the config in `%TEMP%`). Add `--preview-pending` to start with a leftover session and the restore banner.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules a tweak must meet and how on-machine cycles are run.
+
 CI (`.github/workflows/build.yml`) builds, runs the core self-test and the UI tests, and packages on every push to `main` and every pull request; tags `v*` publish the zip as a GitHub release.
 
 The NVAPI headers and import library in `core/third_party/nvapi` are a vendored subset of the NVIDIA NVAPI SDK (MIT). The bundled fonts (Chakra Petch, Inter, JetBrains Mono) are under the SIL Open Font License; their licenses ship in the release zip.
@@ -225,8 +229,11 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 - [#1](https://github.com/SoloScriptSage/PeakMode/issues/1) Snapshot::begin: check-then-create race can overwrite another process's snapshot
 - [#2](https://github.com/SoloScriptSage/PeakMode/issues/2) Snapshot owner is never checked for liveness; a second process can restore a live instance's tweaks
 - [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Active instance does not notice when another process restored its snapshot
-- [#4](https://github.com/SoloScriptSage/PeakMode/issues/4) "Already running" message box can hide behind other windows
 - [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Windows Search can restart within seconds of being stopped, so that tweak may not last for the whole boost (restore is unaffected)
+
+Fixed in 0.2.1:
+
+- [#4](https://github.com/SoloScriptSage/PeakMode/issues/4) "Already running" message box could open behind other windows. It now has a topmost owner (not yet checked by hand with a second instance)
 
 Fixed in 0.2.0:
 
@@ -243,7 +250,20 @@ Fixed in 0.2.0:
 - [x] CI build and release packaging
 - [x] Main window: Boost, Tweaks and History screens (0.2.0)
 - [x] Session log with restore reasons (0.2.0)
-- [ ] Settings screen
+- [x] Settings screen (0.2.1)
+
+### 0.3.0 (planned)
+
+Make every tweak that shows APPLIED actually hold for the whole boost, and add only what the documentation supports ([tweak verdicts](docs/tweak-verdicts.md)):
+
+- [ ] Timer resolution: confirm whether the request reaches other processes (`scripts/timer-resolution-check.ps1`); drop or relabel the tweak if it doesn't
+- [ ] [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Show a service that Windows restarted during the boost instead of APPLIED
+- [ ] [#1](https://github.com/SoloScriptSage/PeakMode/issues/1), [#2](https://github.com/SoloScriptSage/PeakMode/issues/2), [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Snapshot ownership between processes
+- [ ] New tweaks rated ADD: processor boost mode Aggressive and energy performance preference 0, on the active power plan, journaled and restored
+- [ ] Before/after measurement for the default-on tweaks rated OPT-IN (Ultimate Performance plan, SysMain), and change the defaults if they don't help
+
+### Later
+
 - [ ] Apply priority/affinity when the game starts after activation (today it must already be running)
 - [ ] Per-game profiles
 - [ ] Optional auto-activate on game launch
