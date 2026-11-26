@@ -19,7 +19,7 @@ Every change is recorded on disk before it is made, so PeakMode can put your sys
 **Windows**
 - Raises the priority of your game process to High (`windows.targetProcess`)
 - Pins the game to one thread per physical core (P-cores only on hybrid Intel CPUs)
-- Requests 0.5 ms timer resolution while PeakMode runs
+- Opt-in, off by default: requests 0.5 ms timer resolution while PeakMode runs. On Windows 10 2004 and later the request only affects PeakMode's own process; games set their own timer ([#9](https://github.com/SoloScriptSage/PeakMode/issues/9))
 - Switches to the High Performance or Ultimate Performance power plan
 - Disables Nagle's algorithm (`TcpAckFrequency=1`, `TCPNoDelay=1`) on all network interfaces
 - Stops SysMain (Superfetch) and Windows Search while active
@@ -34,7 +34,7 @@ Every change is recorded on disk before it is made, so PeakMode can put your sys
 - Routes the Ethernet adapter's interrupts away from CPU core 0
 - Turns off interrupt moderation, Energy Efficient Ethernet, power saving and Wake-on-LAN on the adapter
 
-**Which tweaks, and why not others.** [docs/tweak-verdicts.md](docs/tweak-verdicts.md) checks the tweaks that popular "Windows tweaks for gaming" videos recommend against Microsoft, NVIDIA and AMD documentation, with a source for every verdict. It also lists what that check found about PeakMode itself: the timer resolution request probably no longer reaches the game on Windows 10 2004 and later, and the power plan and SysMain tweaks still need a before/after measurement.
+**Which tweaks, and why not others.** [docs/tweak-verdicts.md](docs/tweak-verdicts.md) checks the tweaks that popular "Windows tweaks for gaming" videos recommend against Microsoft, NVIDIA and AMD documentation, with a source for every verdict. It also lists what that check found about PeakMode itself: the timer resolution request does not reach the game on Windows 10 2004 and later (measured in [#9](https://github.com/SoloScriptSage/PeakMode/issues/9), so it is now opt-in), and the power plan and SysMain tweaks still need a before/after measurement.
 
 ### Why interrupt tweaks are off by default
 
@@ -46,7 +46,7 @@ Adapter settings only take effect after the adapter restarts, so with `interrupt
 
 New in 0.2.0. Open it from the tray menu (**Open PeakMode**). Closing the window hides it; the tray keeps running.
 
-- **Boost.** The logo is the button: a tachometer whose needle moves as the core applies each step, then revs at the redline while active. Four cards show the changes applied, the snapshot state, the active power plan and the timer resolution. Below, one card per tweak shows READY, APPLYING, APPLIED, SKIPPED or RESTORED. Clicking the gauge again restores everything, newest change first. With Windows "Show animations" off, the gauge jumps between states.
+- **Boost.** The logo is the button: a tachometer whose needle moves as the core applies each step, then revs at the redline while active. Four cards show the changes applied, the snapshot state, the active power plan and the global timer resolution (information only: games set their own timer, [#9](https://github.com/SoloScriptSage/PeakMode/issues/9)). Below, one card per tweak shows READY, APPLYING, APPLIED, SKIPPED or RESTORED. Clicking the gauge again restores everything, newest change first. With Windows "Show animations" off, the gauge jumps between states.
 - **Tweaks.** Every module with a one-line description, a risk tag (SAFE or NETWORK BLIP), how many values it saves, and a switch that writes to `config\peakmode.json`. Expand a row to see exactly what changes, how it is restored and what it needs. The target process is set here too. Switches are locked while a boost is active.
 - **History.** Every boost and restore from the session log: when, how many settings, how it ended (CLEAN, AFTER CRASH, PARTIAL), how long it was active and what restored it. The selected session lists its snapshot entries with the value before and during the boost. If PeakMode was still active when it last closed, a banner offers RESTORE NOW.
 
@@ -107,7 +107,7 @@ If something is ever left tweaked, see [RECOVERY.md](scripts/RECOVERY.md) (also 
 | `windows.disableNagle` | `true` | Nagle off on all interfaces (new connections) |
 | `windows.disableSysMain` | `true` | Stop SysMain while active |
 | `windows.disableSearchIndex` | `true` | Stop Windows Search while active |
-| `windows.setTimerResolution` | `true` | 0.5 ms timer resolution while PeakMode runs |
+| `windows.setTimerResolution` | `false` | Opt-in: 0.5 ms timer resolution while PeakMode runs. Lowers the global value but does not reach the game on Windows 10 2004 and later ([#9](https://github.com/SoloScriptSage/PeakMode/issues/9)) |
 | `nvidia.maxPerfMode` | `true` | Prefer maximum performance |
 | `nvidia.disableVSync` | `true` | Force VSync off |
 | `nvidia.disablePrerenderFrames` | `true` | Max pre-rendered frames = 1 |
@@ -188,7 +188,7 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 |---|---|---|---|
 | Target process priority | Yes | Yes | Tested with Notepad as the target |
 | Target process affinity | Yes | Yes | `0xFFFF` to `0x5555` on 8 cores / 16 threads |
-| Timer resolution | Yes (0.5 ms while active) | Yes (released) | Measured in the tray cycle |
+| Timer resolution (opt-in since 0.3.0) | Yes (0.5 ms global while active) | Yes (released) | Measured in the tray cycle. Does not reach other processes ([#9](https://github.com/SoloScriptSage/PeakMode/issues/9)), so it is off by default |
 | Power plan | Yes (High Performance) | Yes | Creating a temporary plan copy (fallback path): **untested** |
 | Nagle | Yes | Yes | 6 interfaces |
 | SysMain / Windows Search | Yes | Yes | Services already stopped before activation: **untested** |
@@ -226,7 +226,9 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | 0.2.1: Settings screen, cut corners and letter spacing in the real window | **Untested** | | Built and unit-tested only; letter spacing also checked in an off-screen render |
 | 0.2.1: "Already running" box in front with a second instance ([#4](https://github.com/SoloScriptSage/PeakMode/issues/4)) | **Untested** | | |
 | 0.2.1: Background services card shows RESTARTED on a real boost ([#7](https://github.com/SoloScriptSage/PeakMode/issues/7)) | **Untested** | | Fake core and service reader in tests; the real service query is tested read-only |
-| 0.2.1: `scripts/timer-resolution-check.ps1` while PeakMode is active | **Untested** | | Dry run idle: Sleep(1) median 15.8 ms; with its own 1 ms request 1.1 ms |
+| 0.2.1: `scripts/timer-resolution-check.ps1` while PeakMode is active | Yes | Yes | Two cycles on Windows 11 22631: global value 1 → 0.5 → 1 ms, but Sleep(1) in a process that asks for nothing stayed at about 15.5 ms in every run. The request does not reach other processes ([#9](https://github.com/SoloScriptSage/PeakMode/issues/9)) |
+| 0.3.0: UI unit tests (adds timer opt-in, info-only Timer card, #9 link) | Yes (118 pass) | | Locally; fake core, configs in a temp folder, the real timer query is read-only |
+| 0.3.0: info-only Timer card and the Tweaks opt-in note in the real window | **Untested** | | Built and unit-tested only |
 
 ---
 
@@ -262,7 +264,7 @@ Fixed in 0.2.0:
 
 Make every tweak that shows APPLIED actually hold for the whole boost, and add only what the documentation supports ([tweak verdicts](docs/tweak-verdicts.md)):
 
-- [ ] Timer resolution: confirm whether the request reaches other processes (`scripts/timer-resolution-check.ps1`); drop or relabel the tweak if it doesn't
+- [x] [#9](https://github.com/SoloScriptSage/PeakMode/issues/9) Timer resolution: measured that the request does not reach other processes; `windows.setTimerResolution` is now off by default and the Timer card is information only
 - [ ] [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Confirm on a real boost that the Background services card shows RESTARTED (added in 0.2.1), and decide whether to keep WSearch stopped or turn `disableSearchIndex` off by default
 - [ ] [#1](https://github.com/SoloScriptSage/PeakMode/issues/1), [#2](https://github.com/SoloScriptSage/PeakMode/issues/2), [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Snapshot ownership between processes
 - [ ] New tweaks rated ADD: processor boost mode Aggressive and energy performance preference 0, on the active power plan, journaled and restored

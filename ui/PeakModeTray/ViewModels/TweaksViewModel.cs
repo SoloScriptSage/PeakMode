@@ -13,15 +13,17 @@ namespace PeakModeTray.ViewModels
     internal sealed class FlagViewModel : ObservableObject
     {
         private readonly TweaksViewModel _owner;
-        public FlagViewModel(TweaksViewModel owner, string section, string key, string label)
-        { _owner = owner; Section = section; Key = key; Label = label; }
+        public FlagViewModel(TweaksViewModel owner, string section, string key, string label, bool fallback = true)
+        { _owner = owner; Section = section; Key = key; Label = label; Fallback = fallback; }
 
         public string Section { get; }
         public string Key     { get; }
         public string Label   { get; }
+        // Value when the key is missing from the config (matches core/engine/ProfileManager.h)
+        public bool   Fallback { get; }
         public bool   Value
         {
-            get => _owner.Store.GetBool(Section, Key, true);
+            get => _owner.Store.GetBool(Section, Key, Fallback);
             set => _owner.SetFlag(this, value);
         }
         public bool   CanEdit => _owner.CanEdit;
@@ -51,6 +53,14 @@ namespace PeakModeTray.ViewModels
         public ObservableCollection<FlagViewModel> Flags { get; } = new();
         public bool HasFlags => Flags.Count > 1;
         public bool HasTarget => Step == PeakModeCore.StepProcess;
+
+        // Opt-in rows: off by default, with a one-line reason and a link to the issue
+        public string  Note    { get; init; } = "";
+        public string? NoteUrl { get; init; }
+        public string  NoteLinkText { get; init; } = "";
+        public bool    HasNote => Note.Length > 0;
+        public RelayCommand? OpenNote { get; init; }
+        public string  OpenNoteName => $"Open {NoteLinkText} on GitHub: why {Name} is opt-in";
 
         private string _count = "";
         public string Count { get => _count; set => Set(ref _count, value); }
@@ -90,13 +100,19 @@ namespace PeakModeTray.ViewModels
     {
         private static readonly Regex ExeName = new(@"^[\w.\- ]+\.exe$", RegexOptions.IgnoreCase);
         private readonly ICoreService _core;
+        private readonly Action<string> _open;
+
+        // #9: the timer request does not reach other processes on Windows 10 2004 and later
+        internal const string TimerIssueUrl = SettingsViewModel.RepoUrl + "/issues/9";
 
         public ProfileStore Store { get; }
         public ObservableCollection<TweakRowViewModel> Rows { get; } = new();
 
-        public TweaksViewModel(ICoreService core, ProfileStore store)
+        // Links go through the injected opener so tests never start a process
+        public TweaksViewModel(ICoreService core, ProfileStore store, Action<string>? open = null)
         {
             _core = core;
+            _open = open ?? (_ => { });
             Store = store;
             Build();
             _core.StateChanged += Refresh;
@@ -131,11 +147,21 @@ namespace PeakModeTray.ViewModels
             process.Flags.Add(new(this, "windows", "setProcPriorityHigh", "High priority"));
             process.Flags.Add(new(this, "windows", "pinToPCores", "Pin to physical cores"));
 
-            var timer = R(PeakModeCore.StepTimer, "Timer resolution", "Finer system timer while boosted",
-                Icons.Timer, "windowsTweaks", false,
-                ("changes", "requests 0.5 ms timer resolution (NtSetTimerResolution 5000)"),
-                ("restore", "request released on restore or exit; not in the snapshot"));
-            timer.Flags.Add(new(this, "windows", "setTimerResolution", "Timer resolution"));
+            var timer = new TweakRowViewModel(this, PeakModeCore.StepTimer, "Timer resolution",
+                "Finer timer for PeakMode's own process", Icons.Timer, "windowsTweaks", false,
+                new[]
+                {
+                    new DetailLine("changes", "requests 0.5 ms timer resolution (NtSetTimerResolution 5000)"),
+                    new DetailLine("effect", "the global value drops, but a game that asks for nothing keeps the default timer"),
+                    new DetailLine("restore", "request released on restore or exit; not in the snapshot"),
+                })
+            {
+                Note = "Opt-in: on Windows 10 2004 and later, games set their own timer.",
+                NoteUrl = TimerIssueUrl,
+                NoteLinkText = "#9",
+                OpenNote = new RelayCommand(() => _open(TimerIssueUrl)),
+            };
+            timer.Flags.Add(new(this, "windows", "setTimerResolution", "Timer resolution", fallback: false));
 
             var power = R(PeakModeCore.StepPower, "Power plan", "Switch to High or Ultimate performance while boosted",
                 Icons.Power, "windowsTweaks", false,

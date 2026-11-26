@@ -102,7 +102,7 @@ namespace PeakModeTray
         {
             var store  = new ProfileStore(configPath);
             var boost  = new ViewModels.BoostViewModel(core, configPath, powerPlan, timerMs, serviceRunning);
-            var tweaks = new ViewModels.TweaksViewModel(core, store);
+            var tweaks = new ViewModels.TweaksViewModel(core, store, TrayApp.ShellOpen);
             store.Changed += boost.ProfileChanged;
             var settings = new ViewModels.SettingsViewModel(VersionText(), configPath, TrayApp.LogPath,
                 AppContext.BaseDirectory, TrayApp.ShellOpen);

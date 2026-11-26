@@ -18,7 +18,7 @@ struct Profile {
     bool disableNagle          = true;
     bool disableSysMain        = true;
     bool disableSearchIndex    = true;
-    bool setTimerResolution    = true;      // 0.5ms via NtSetTimerResolution
+    bool setTimerResolution    = false;     // 0.5ms via NtSetTimerResolution; opt-in: does not reach other processes (#9)
 
     // NVIDIA options (global DRS base profile)
     bool maxPerfMode            = true;

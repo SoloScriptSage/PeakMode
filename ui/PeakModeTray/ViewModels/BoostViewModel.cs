@@ -66,7 +66,7 @@ namespace PeakModeTray.ViewModels
         public ObservableCollection<ModuleCardViewModel> Modules { get; } = new()
         {
             new(PeakModeCore.StepProcess,   "Process priority",    "no target process set",          Icons.Process, false),
-            new(PeakModeCore.StepTimer,     "Timer resolution",    "default → 0.5 ms while active", Icons.Timer,   false),
+            new(PeakModeCore.StepTimer,     "Timer resolution",    "opt-in: 0.5 ms for PeakMode only", Icons.Timer, false),
             new(PeakModeCore.StepPower,     "Power plan",          "→ High or Ultimate performance", Icons.Power,  false),
             new(PeakModeCore.StepNagle,     "Nagle off",           "TcpAckFrequency, TCPNoDelay = 1", Icons.Net,    false),
             new(PeakModeCore.StepServices,  "Background services", ServicesDetail,                   Icons.Services, false),
@@ -77,7 +77,7 @@ namespace PeakModeTray.ViewModels
         public StatViewModel ChangesStat  { get; } = new("CHANGES APPLIED");
         public StatViewModel SnapshotStat { get; } = new("SNAPSHOT");
         public StatViewModel PowerStat    { get; } = new("POWER PLAN");
-        public StatViewModel TimerStat    { get; } = new("TIMER");
+        public StatViewModel TimerStat    { get; } = new("GLOBAL TIMER");
 
         public RelayCommand ToggleCommand { get; }
 
@@ -298,8 +298,8 @@ namespace PeakModeTray.ViewModels
             PowerStat.Hot   = plan.Contains("performance", StringComparison.OrdinalIgnoreCase);
             double ms = _timerMs();
             TimerStat.Value = ms > 0 ? $"{ms:0.##} MS" : "N/A";
-            TimerStat.Note  = "System timer resolution";
-            TimerStat.Hot   = ms > 0 && ms <= 0.51;
+            TimerStat.Note  = "Games set their own timer";
+            TimerStat.Hot   = false;   // information only: PeakMode's request does not reach the game (#9)
         }
 
         // ── profile and session log ──────────────────────────────────────────
@@ -341,7 +341,7 @@ namespace PeakModeTray.ViewModels
                 m.Included = m.Step switch
                 {
                     PeakModeCore.StepProcess   => win && (B("windows", "setProcPriorityHigh", true) || B("windows", "pinToPCores", true)),
-                    PeakModeCore.StepTimer     => win && B("windows", "setTimerResolution", true),
+                    PeakModeCore.StepTimer     => win && B("windows", "setTimerResolution", false),
                     PeakModeCore.StepPower     => win && B("windows", "setUltimatePerf", true),
                     PeakModeCore.StepNagle     => win && B("windows", "disableNagle", true),
                     PeakModeCore.StepServices  => win && (B("windows", "disableSysMain", true) || B("windows", "disableSearchIndex", true)),
