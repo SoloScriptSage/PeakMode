@@ -213,6 +213,7 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | 0.2.0: activate from the window, restore from the tray | Yes | Yes | 17 snapshot entries; one Nagle interface skipped because the snapshot write failed ([#5](https://github.com/SoloScriptSage/PeakMode/issues/5)); session log `reason=tray` |
 | 0.2.0: activate and restore both with the Boost gauge | Yes | Yes | Default config, 19 snapshot entries; all 41 captured values identical after restore; session log `reason=window`, `ok`, 19 restored, 0 failed |
 | 0.2.0: History screen on the real session log | Yes | | Showed that cycle as CLEAN, restored by Boost screen, all 19 entries with before and during values; older sessions including one AFTER CRASH |
+| 0.2.0: FPS effect in Dota 2 (CapFrameX, 5 × 60 s runs) | | | No measurable difference: run-to-run spread (~10 FPS) is larger than any on/off difference; CPU already at max boost, GPU ~40% (CPU-bound). [Measurement](docs/measurements/2026-11-24-dota2-laptop.md) |
 | 0.2.0: History restore banner on a real leftover snapshot | **Untested** | | Tested in the preview only |
 | 0.2.0: Tweaks switches writing the real config | **Untested** | | ProfileStore covered by unit tests on a temp copy |
 | 0.2.0: Boost with Windows "Show animations" off | **Untested** | | |
