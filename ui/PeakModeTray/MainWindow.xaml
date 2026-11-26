@@ -513,6 +513,16 @@
                                         <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}" FontSize="16" />
                                             <TextBlock Text="{Binding Desc}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                                            <!-- Opt-in rows (#9): one-line reason and a link to the issue -->
+                                            <WrapPanel Margin="0,6,0,0"
+                                                       Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="{Binding Note}" Style="{StaticResource FaintText}" FontSize="12"
+                                                           VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource OutlineButton}" Padding="8,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Content="{Binding NoteLinkText}" Command="{Binding OpenNote}"
+                                                        AutomationProperties.Name="{Binding OpenNoteName}" />
+                                            </WrapPanel>
                                         </StackPanel>
                                     </DockPanel>
                                     <!-- Details -->

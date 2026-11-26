@@ -12,7 +12,7 @@
     "disableNagle": true,
     "disableSysMain": true,
     "disableSearchIndex": true,
-    "setTimerResolution": true
+    "setTimerResolution": false
   },
 
   "nvidia": {

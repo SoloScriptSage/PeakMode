@@ -267,9 +267,11 @@ static void testSteps() {
     CHECK(steps.size() == STEP_COUNT);
     for (int i = 0; i < static_cast<int>(steps.size()); ++i) {
         CHECK(steps[i].id == i);
-        CHECK(steps[i].enabled);
+        CHECK(steps[i].enabled == (i != STEP_TIMER));   // timer is opt-in (#9)
         CHECK(steps[i].appliedWithoutEntries == (i == STEP_TIMER));
     }
+    p = ProfileManager::parse(R"({ "windows": { "setTimerResolution": true } })").profile;
+    CHECK(O::stepsFor(p)[STEP_TIMER].enabled);                 // still possible to opt in
     p.windowsTweaks = false;
     p.redirectNicIrq = p.disableNicInterruptMod = false;
     steps = O::stepsFor(p);
