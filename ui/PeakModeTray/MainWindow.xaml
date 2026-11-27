@@ -168,6 +168,8 @@
                                  Checked="OnNavBoost" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Tweaks" Tag="{x:Static vm:Icons.Tweaks}"
                                  GroupName="nav" AutomationProperties.Name="Tweaks" Checked="OnNavTweaks" />
+                    <RadioButton Style="{StaticResource NavItem}" Content="Checkup" Tag="{x:Static vm:Icons.Checkup}"
+                                 GroupName="nav" AutomationProperties.Name="PC Checkup" Checked="OnNavCheckup" />
                     <RadioButton Style="{StaticResource NavItem}" Content="History" Tag="{x:Static vm:Icons.History}"
                                  GroupName="nav" AutomationProperties.Name="History" Checked="OnNavHistory" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Settings" Tag="{x:Static vm:Icons.Settings}"
@@ -595,6 +597,189 @@
                                             <TextBlock Text="{Binding TargetError}" Style="{StaticResource BodyText}" FontSize="12"
                                                        Foreground="{StaticResource AmberBrush}" Margin="0,4,0,0" />
                                         </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- PC Checkup screen: read-only checks with a status and a fix the user makes (docs/checkup.md) -->
+        <Grid x:Name="CheckupPage" Grid.Column="1" Margin="36,24,24,24" DataContext="{Binding Checkup}"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <DockPanel Margin="0,0,12,0">
+                <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="RE-CHECK"
+                        VerticalAlignment="Bottom" Command="{Binding RecheckCommand}"
+                        AutomationProperties.Name="Run the checkup again" />
+                <StackPanel>
+                    <TextBlock Text="READ ONLY · NOTHING IS CHANGED" Style="{StaticResource EyebrowText}" />
+                    <TextBlock Text="PC CHECKUP" Style="{StaticResource H1Text}" Margin="0,4,0,0" />
+                </StackPanel>
+            </DockPanel>
+            <StackPanel Grid.Row="1" Margin="0,20,12,16">
+                <UniformGrid Columns="3">
+                    <Border Style="{StaticResource StatCard}" Margin="0,0,7,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding OkCount}" Style="{StaticResource SummaryValueText}"
+                                       Foreground="{StaticResource GreenBrush}" />
+                            <TextBlock Text="OK" Style="{StaticResource LabelText}" Margin="10,0,0,5" VerticalAlignment="Bottom" />
+                        </DockPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatCard}" Margin="7,0,7,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding WarnCount}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SummaryValueText}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding WarnHot}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="WORTH CHECKING" Style="{StaticResource LabelText}" TextWrapping="Wrap" Margin="10,0,0,5" VerticalAlignment="Bottom" />
+                        </DockPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatCard}" Margin="7,0,0,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding InfoCount}" Style="{StaticResource SummaryValueText}"
+                                       Foreground="{StaticResource MutedBrush}" />
+                            <TextBlock Text="INFO" Style="{StaticResource LabelText}" Margin="10,0,0,5" VerticalAlignment="Bottom" />
+                        </DockPanel>
+                    </Border>
+                </UniformGrid>
+                <TextBlock Text="{Binding CheckedText}" Style="{StaticResource FaintText}" Margin="0,10,0,0" />
+            </StackPanel>
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Focusable="False" Padding="0,0,12,0">
+                <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,10" Padding="16,14" BorderThickness="1" c:CutCorners.TopRight="14"
+                                    Background="{StaticResource SurfaceBrush}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsOpen}" Value="True">
+                                                <Setter Property="BorderBrush" Value="{StaticResource BorderOpenBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <DockPanel>
+                                        <Path DockPanel.Dock="Left" Data="{Binding Icon}" Width="24" Height="24" Stretch="Uniform"
+                                              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                              Stroke="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Width="36" Height="36"
+                                                Padding="0" Margin="12,0,0,0" Command="{Binding ToggleOpen}"
+                                                AutomationProperties.Name="{Binding ExpandName}"
+                                                AutomationProperties.HelpText="{Binding SpokenStatus}">
+                                            <Path Data="M6 9l6 6 6-6" Width="16" Height="16" Stretch="Uniform" StrokeThickness="2"
+                                                  Stroke="{StaticResource MutedBrush}" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  RenderTransformOrigin="0.5,0.5">
+                                                <Path.Style>
+                                                    <Style TargetType="Path">
+                                                        <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0" /></Setter.Value></Setter>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOpen}" Value="True">
+                                                                <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180" /></Setter.Value></Setter>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Path.Style>
+                                            </Path>
+                                        </Button>
+                                        <Border DockPanel.Dock="Right" Margin="12,0,0,0" Padding="8,4" MinWidth="118" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource TagBorder}">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsOk}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{StaticResource GreenBorderBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsWarn}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{StaticResource AmberBorderBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Tag}" HorizontalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource TagText}">
+                                                        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsWarn}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" Style="{StaticResource MonoText}"
+                                                   Foreground="{StaticResource TextBrush}" MinWidth="150" TextAlignment="Right"
+                                                   VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}" FontSize="16" />
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="0,3,0,0"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <!-- How to fix: always shown, it is the point of the row -->
+                                    <Border Margin="0,12,0,0" Padding="12,10" BorderThickness="3,0,0,0"
+                                            BorderBrush="{StaticResource AmberBrush}" Background="{StaticResource AmberBgBrush}"
+                                            Visibility="{Binding HasFix, Converter={StaticResource BoolToVis}}">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Left" Text="HOW TO FIX" Style="{StaticResource LabelText}"
+                                                       Foreground="{StaticResource AmberBrush}" Margin="0,1,10,0" />
+                                            <TextBlock Text="{Binding Fix}" Style="{StaticResource BodyText}" FontSize="13"
+                                                       Foreground="{StaticResource AmberTextBrush}" TextWrapping="Wrap" />
+                                        </DockPanel>
+                                    </Border>
+                                    <!-- Details -->
+                                    <StackPanel Margin="0,12,0,0"
+                                                Visibility="{Binding IsOpen, Converter={StaticResource BoolToVis}}">
+                                        <Border Padding="12,10" BorderThickness="3,0,0,0" Margin="0,0,0,12"
+                                                BorderBrush="{StaticResource BorderStrongBrush}" Background="{StaticResource SurfaceDimBrush}"
+                                                Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}">
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding NoteLabel}" Style="{StaticResource LabelText}"
+                                                           Margin="0,1,10,0" />
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Padding="8,2"
+                                                        Margin="10,0,0,0" VerticalAlignment="Center"
+                                                        Content="{Binding LinkText}" Command="{Binding OpenLink}"
+                                                        AutomationProperties.Name="{Binding LinkName}"
+                                                        Visibility="{Binding HasLink, Converter={StaticResource BoolToVis}}" />
+                                                <TextBlock Text="{Binding Note}" Style="{StaticResource BodyText}" FontSize="13"
+                                                           Foreground="{StaticResource TextSoftBrush}" TextWrapping="Wrap" />
+                                            </DockPanel>
+                                        </Border>
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                            <ItemsControl ItemsSource="{Binding Lines}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel Margin="0,0,0,8">
+                                                            <TextBlock DockPanel.Dock="Left" Text="{Binding K}" Style="{StaticResource MonoText}"
+                                                                       Foreground="{StaticResource FaintBrush}" Width="90" />
+                                                            <TextBlock Text="{Binding V}" Style="{StaticResource MonoText}"
+                                                                       Foreground="{StaticResource TextSoftBrush}" TextWrapping="Wrap" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

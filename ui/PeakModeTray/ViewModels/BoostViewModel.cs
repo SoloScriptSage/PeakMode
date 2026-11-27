@@ -434,6 +434,7 @@ namespace PeakModeTray.ViewModels
         // 24 x 24 stroke icons from the mockups
         public const string Boost    = "M13 2L4 14h7l-1 8 9-12h-7z";
         public const string Tweaks   = "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12";
+        public const string Checkup  = "M9 11l3 3 8-8M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h9";
         public const string History  = "M3 12a9 9 0 103-6.7L3 8M3 3v5h5M12 7v5l3 2";
         public const string Settings = "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12h2M3 12h2M12 3v2M12 19v2";
         public const string Power    = "M13 2L4 14h7l-1 8 9-12h-7z";

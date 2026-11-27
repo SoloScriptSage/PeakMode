@@ -98,6 +98,12 @@ public:
     ProfileState state() const;
     std::string  lastError() const;
 
+    // Adds a "gpu" event to the active session's log (PC Checkup). Read-only
+    // for the system. PM_ERR_NOTHING when no activation of this process is
+    // active. Strings are cut to 260 bytes; an unknown role is stored as "".
+    int recordGpu(const std::string& process, const std::string& adapter,
+                  const std::string& role);
+
     // Called synchronously on the thread running activate()/restore().
     void setProgressCallback(ProgressFn fn, void* user);
 
@@ -155,4 +161,7 @@ extern "C" {
     // calling pattern as PeakMode_GetLastError: returns the full length in
     // bytes excluding the NUL; call again with a bigger buffer if it was larger.
     __declspec(dllexport) int  PeakMode_ReadSessions(char* buf, int bufLen);
+    // Orchestrator::recordGpu; strings are UTF-8, null is treated as "".
+    __declspec(dllexport) int  PeakMode_RecordGpu(const char* processUtf8, const char* adapterUtf8,
+                                                  const char* roleUtf8);
 }

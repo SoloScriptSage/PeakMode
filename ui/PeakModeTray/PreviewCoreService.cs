@@ -52,7 +52,17 @@ namespace PeakModeTray
             }
         }
 
-        public string ReadSessions() => new JsonArray(_log.Select(e => (JsonNode)e.DeepClone()).ToArray()).ToJsonString();
+        public string ReadSessions()
+        {
+            lock (_log) return new JsonArray(_log.Select(e => (JsonNode)e.DeepClone()).ToArray()).ToJsonString();
+        }
+
+        public bool RecordGpu(string process, string adapter, string role)
+        {
+            if (State != PeakModeCore.StateActive) return false;
+            Log("gpu", DateTime.UtcNow, PreviewPid, new() { ["process"] = process, ["adapter"] = adapter, ["role"] = role });
+            return true;
+        }
 
         private void Sample(DateTime begin, TimeSpan dur, string reason, int n, int pid, int endPid)
         {
@@ -72,7 +82,7 @@ namespace PeakModeTray
                 ["time"] = t.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture), ["pid"] = pid,
             };
             foreach (var (k, v) in extra) ev[k] = v?.DeepClone();
-            _log.Add(ev);
+            lock (_log) _log.Add(ev);   // RecordGpu comes from a worker thread
         }
 
         private static JsonObject EndFields(string reason, int n) => new()

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PeakMode app: checkup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07080C;--sidebar:#0B0C12;--surface:#0D0F16;--border:#1C1F2A;--border-strong:#2A2E3A;--text:#F3F1EC;--muted:#A0A6AF;--faint:#767D8D;
+  --accent:#FF3D7F;--accent-soft:#FF8FB5;--amber:#FFB020;--amber-border:#5A4520;--green:#5BD18B;--green-border:#1F3A2B;--soft:#D6D3DE}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,sans-serif}
+a{color:var(--accent-soft);text-decoration:none}a:hover{color:#FFC2D6}
+button{font:inherit;cursor:pointer}
+.mono{font-family:'JetBrains Mono',monospace}
+.app{display:flex;flex-wrap:wrap;min-height:100vh;background-image:radial-gradient(#1A1D27 1px,transparent 1px);background-size:22px 22px}
+nav{flex:1 1 220px;max-width:260px;min-width:200px;padding:24px 16px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 24px;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:20px;letter-spacing:2px}
+.brand svg{width:34px;height:34px}
+.nav{display:flex;align-items:center;gap:12px;padding:11px 12px;font-size:14px;font-weight:500;color:var(--muted);border-left:3px solid transparent}
+.nav.on{color:var(--text);background:#1A0E16;border-left-color:var(--accent)}
+.nav .new{margin-left:auto;font-size:9px;letter-spacing:1px;color:var(--accent-soft);border:1px solid #5A2140;padding:2px 5px}
+main{flex:999 1 560px;min-width:0;padding:32px 40px 40px;display:flex;flex-direction:column;gap:24px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.eyebrow{font-size:12px;color:var(--accent-soft);letter-spacing:2px}
+h1{margin:4px 0 0;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:40px;letter-spacing:1px}
+.btn{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;padding:10px 16px;background:transparent;color:var(--muted);border:1px solid var(--border-strong)}
+.btn:hover{color:var(--text)}
+.sub{font-size:12px;color:var(--faint);margin-top:6px}
+.summary{display:flex;gap:14px;flex-wrap:wrap}
+.sum{flex:1 1 180px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:baseline;gap:10px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
+.sum b{font-family:'Chakra Petch',sans-serif;font-size:28px}
+.sum span{font-size:11px;letter-spacing:1.5px;color:var(--muted)}
+.rows{display:flex;flex-direction:column;gap:10px}
+details{padding:16px 18px;background:var(--surface);border:1px solid var(--border);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}
+details[open]{border-color:#3A2030}
+summary{list-style:none;display:flex;align-items:center;gap:14px;flex-wrap:wrap;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.ico{width:24px;height:24px;flex:none}
+.what{display:flex;flex-direction:column;gap:3px;flex:1 1 220px;min-width:0}
+.what .n{font-weight:600;font-size:16px}
+.what .d{font-size:13px;color:var(--muted)}
+.val{font-size:13px;color:var(--text);min-width:150px;text-align:right}
+.tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 8px;border:1px solid;min-width:118px;text-align:center}
+.ok{color:var(--green);border-color:var(--green-border)}
+.chk{color:var(--amber);border-color:var(--amber-border)}
+.info{color:var(--muted);border-color:var(--border-strong)}
+.chev{width:36px;height:36px;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.chev svg{transition:transform .2s}
+details[open] .chev svg{transform:rotate(180deg)}
+.fix{margin-top:14px;padding:10px 12px;border-left:3px solid var(--amber);background:#120F0A;font-size:13px;color:var(--soft)}
+.fix.neutral{border-left-color:var(--border-strong);background:#0A0B10}
+.fix b{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--amber);margin-right:8px}
+.fix.neutral b{color:var(--muted)}
+.lines{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.l{display:flex;gap:12px;font-family:'JetBrains Mono',monospace;font-size:12px;flex-wrap:wrap}
+.l .k{color:var(--faint);min-width:80px}
+.l .v{color:var(--soft);flex:1 1 300px}
+.foot{font-size:12px;color:var(--faint)}
+.note{font-size:11px;color:var(--faint);border:1px dashed var(--border-strong);padding:8px 12px}
+@media (max-width:700px){main{padding:24px 16px}.val{text-align:left;min-width:0}nav{max-width:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav aria-label="Main">
+    <div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" aria-hidden="true"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><path d="M12 13l4-5" stroke="#F3F1EC"/></svg>PEAKMODE</div>
+    <a class="nav" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>Boost</a>
+    <a class="nav" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/></svg>Tweaks</a>
+    <a class="nav on" href="#" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h9"/></svg>Checkup<span class="new mono">NEW</span></a>
+    <a class="nav" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 103-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg>History</a>
+    <a class="nav" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19 12h2M3 12h2M12 3v2M12 19v2"/></svg>Settings</a>
+  </nav>
+
+  <main>
+    <div class="head">
+      <div>
+        <div class="eyebrow mono">READ ONLY · NOTHING IS CHANGED</div>
+        <h1>PC CHECKUP</h1>
+        <div class="sub">Checked 14:32 · Things outside a boost that often cost more than any tweak. You fix them yourself.</div>
+      </div>
+      <button class="btn" aria-label="Run the checkup again">RE-CHECK</button>
+    </div>
+
+    <div class="summary">
+      <div class="sum"><b style="color:#5BD18B">2</b><span class="mono">OK</span></div>
+      <div class="sum"><b style="color:#FFB020">2</b><span class="mono">WORTH CHECKING</span></div>
+      <div class="sum"><b style="color:#A0A6AF">2</b><span class="mono">INFO</span></div>
+    </div>
+
+    <div class="rows">
+      <!-- 1 Display -->
+      <details open>
+        <summary aria-label="Display refresh rate: worth checking. Show details">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18v12H3zM8 20h8M12 16v4"/></svg>
+          <div class="what"><span class="n">Display refresh rate</span><span class="d">Q27G4ZR on NVIDIA GeForce RTX 3050 Ti Laptop GPU, 2560 × 1440</span></div>
+          <span class="val mono">165 Hz of 240 Hz</span>
+          <span class="tag chk">WORTH CHECKING</span>
+          <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </summary>
+        <div class="fix"><b>HOW TO FIX</b>Settings › System › Display › Advanced display › select Q27G4ZR › Choose a refresh rate › 240 Hz.</div>
+        <div class="lines">
+          <div class="l"><span class="k">read from</span><span class="v">the current mode and every mode the driver lists at this resolution</span></div>
+          <div class="l"><span class="k">also</span><span class="v">MSI MAG273R2, 1920 × 1080: 165 of 165 Hz, OK</span></div>
+          <div class="l"><span class="k">can't tell</span><span class="v">whether you capped it on purpose, or whether the cable needs DSC for the top mode</span></div>
+        </div>
+      </details>
+
+      <!-- 2 RAM -->
+      <details>
+        <summary aria-label="Memory speed: OK. Show details">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM7 7v10M11 7v10M15 7v10M19 17v3M5 17v3"/></svg>
+          <div class="what"><span class="n">Memory speed</span><span class="d">2 × DDR4 SODIMM, both channels</span></div>
+          <span class="val mono">3200 of 3200 MT/s</span>
+          <span class="tag ok">OK</span>
+          <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </summary>
+        <div class="lines">
+          <div class="l"><span class="k">read from</span><span class="v">Win32_PhysicalMemory: ConfiguredClockSpeed vs Speed</span></div>
+          <div class="l"><span class="k">can't tell</span><span class="v">the XMP/EXPO rating. Windows only sees the module's standard speed, so a kit sold as 3600 can show 3200 of 3200</span></div>
+        </div>
+      </details>
+
+      <!-- 3 Power -->
+      <details open>
+        <summary aria-label="Power: OK. Show details">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
+          <div class="what"><span class="n">Power</span><span class="d">Laptop, plugged in · power mode Best performance</span></div>
+          <span class="val mono">AC · BEST PERF.</span>
+          <span class="tag ok">OK</span>
+          <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </summary>
+        <div class="fix neutral"><b>ON LAPTOPS</b>Your laptop maker's performance mode (for example in Armoury Crate or Lenovo Vantage) sets power limits and fans. Windows can't see it, and it often matters more than this.</div>
+        <div class="lines">
+          <div class="l"><span class="k">read from</span><span class="v">GetSystemPowerStatus (AC, battery, energy saver); effective power mode notification (powersetting.h)</span></div>
+          <div class="l"><span class="k">worth checking</span><span class="v">on battery, energy saver on, or "Best power efficiency" while plugged in</span></div>
+        </div>
+      </details>
+
+      <!-- 4 GPU -->
+      <details open>
+        <summary aria-label="Graphics: worth checking. Show details">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM7 17v3M17 17v3M8 12h3"/></svg>
+          <div class="what"><span class="n">Graphics</span><span class="d">Last boost: dota2.exe ran on NVIDIA GeForce RTX 3050 Ti Laptop GPU</span></div>
+          <span class="val mono">DRIVER 566.07 · 25 MO.</span>
+          <span class="tag chk">WORTH CHECKING</span>
+          <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </summary>
+        <div class="fix"><b>HOW TO FIX</b>The NVIDIA driver is from October 2024. Get the current one from NVIDIA or your laptop maker.</div>
+        <div class="lines">
+          <div class="l"><span class="k">read from</span><span class="v">driver version and date from the display adapter's device properties; GPU per process from the "GPU Engine" performance counters while the game runs, saved with the boost session</span></div>
+          <div class="l"><span class="k">also</span><span class="v">AMD Radeon(TM) Graphics (built-in): driver from June 2024, INFO</span></div>
+          <div class="l"><span class="k">can't tell</span><span class="v">which GPU a game used if it ran outside a PeakMode boost</span></div>
+        </div>
+      </details>
+
+      <!-- 5 HVCI -->
+      <details>
+        <summary aria-label="Memory integrity: info. Show details">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+          <div class="what"><span class="n">Memory integrity</span><span class="d">Core isolation, a Windows security feature</span></div>
+          <span class="val mono">OFF</span>
+          <span class="tag info">INFO</span>
+          <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </summary>
+        <div class="fix neutral"><b>ABOUT</b>Microsoft lists it among the gaming options with a security trade-off. PeakMode never changes it. <a href="https://support.microsoft.com/en-us/windows/options-to-optimize-gaming-performance-in-windows-11-a255f612-2949-4373-a566-ff6f3f474613">Microsoft: gaming performance options</a></div>
+      </details>
+
+      <!-- 6 Thermals -->
+      <details>
+        <summary aria-label="Temperatures: info. Show details">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.8V4a2 2 0 10-4 0v10.8a4 4 0 104 0z"/></svg>
+          <div class="what"><span class="n">Temperatures</span><span class="d">Right now. Zone: ACPI thermal zone, not the CPU core temperature</span></div>
+          <span class="val mono">GPU 52 °C · ZONE 73 °C</span>
+          <span class="tag info">INFO</span>
+          <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </summary>
+        <div class="lines">
+          <div class="l"><span class="k">gpu</span><span class="v">the same reading Task Manager shows (D3DKMT adapter performance data)</span></div>
+          <div class="l"><span class="k">zone</span><span class="v">ACPI thermal zone \_TZ.TZ01, a board sensor, not the CPU core temperature</span></div>
+          <div class="l"><span class="k">can't tell</span><span class="v">CPU core temperature: Windows has no documented way to read it without a kernel driver</span></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="foot">The checkup only reads. Nothing here goes into the snapshot, and nothing is sent anywhere.</div>
+    <div class="note mono">REFERENCE MOCKUP (0.3.0) · values from the test PC; the power mode and the GPU temperature are examples. The WPF screen is the source of truth</div>
+  </main>
+</div>
+</body>
+</html>

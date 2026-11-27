@@ -9,7 +9,7 @@ using System.Windows;
 
 namespace PeakModeTray;
 
-// Main window (Boost, Tweaks, History, Settings), opened from the tray.
+// Main window (Boost, Tweaks, Checkup, History, Settings), opened from the tray.
 // Closing it only hides it; the tray keeps running.
 public partial class MainWindow : Window
 {
@@ -25,6 +25,12 @@ public partial class MainWindow : Window
     // Sidebar: show one page (Checked fires during InitializeComponent too)
     private void OnNavBoost(object sender, RoutedEventArgs e)   => ShowPage(BoostPage);
     private void OnNavTweaks(object sender, RoutedEventArgs e)  => ShowPage(TweaksPage);
+    private void OnNavCheckup(object sender, RoutedEventArgs e)
+    {
+        // Read again each time the page is shown: the checks only read
+        if (DataContext is ViewModels.MainViewModel m) _ = m.Checkup.RefreshAsync();
+        ShowPage(CheckupPage);
+    }
     private void OnNavHistory(object sender, RoutedEventArgs e)
     {
         (DataContext as ViewModels.MainViewModel)?.History.Refresh();
@@ -42,8 +48,9 @@ public partial class MainWindow : Window
     }
     private void ShowPage(FrameworkElement? page)
     {
-        if (page == null || BoostPage == null || TweaksPage == null || HistoryPage == null || SettingsPage == null) return;
-        foreach (var p in new FrameworkElement[] { BoostPage, TweaksPage, HistoryPage, SettingsPage })
+        if (page == null || BoostPage == null || TweaksPage == null || CheckupPage == null ||
+            HistoryPage == null || SettingsPage == null) return;
+        foreach (var p in new FrameworkElement[] { BoostPage, TweaksPage, CheckupPage, HistoryPage, SettingsPage })
             p.Visibility = p == page ? Visibility.Visible : Visibility.Collapsed;
     }
 

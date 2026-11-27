@@ -220,6 +220,24 @@ int Orchestrator::activateImpl(const std::string& profilePath, int& entries) {
     return PM_OK;
 }
 
+int Orchestrator::recordGpu(const std::string& process, const std::string& adapter,
+                            const std::string& role) {
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    if (!m_active) return PM_ERR_NOTHING;
+    Snapshot::Entry doc;
+    std::string err;
+    std::string session = Snapshot::load(doc, err) ? Snapshot::sessionIdOf(doc) : std::string();
+    if (session.empty()) return PM_ERR_NOTHING;
+    auto cut = [](const std::string& s) {       // on a UTF-8 character boundary
+        if (s.size() <= 260) return s;
+        size_t n = 260;
+        while (n > 0 && (static_cast<unsigned char>(s[n]) & 0xC0) == 0x80) --n;
+        return s.substr(0, n);
+    };
+    std::string r = (role == "discrete" || role == "integrated") ? role : std::string();
+    return SessionLog::gpu(session, cut(process), cut(adapter), r) ? PM_OK : PM_ERR_INTERNAL;
+}
+
 const char* Orchestrator::reasonName(int reason) {
     static const char* const names[] = {
         "unknown", "tray", "window", "exit", "sessionEnd", "crashPrompt", "banner", "cli",
@@ -324,6 +342,16 @@ int PeakMode_ReadSessions(char* buf, int bufLen) {
         buf[n] = '\0';
     }
     return static_cast<int>(s.size());
+}
+
+int PeakMode_RecordGpu(const char* process, const char* adapter, const char* role) {
+    try {
+        return PeakMode::Orchestrator::instance().recordGpu(process ? process : "",
+                                                            adapter ? adapter : "",
+                                                            role ? role : "");
+    } catch (...) {
+        return PeakMode::PM_ERR_INTERNAL;
+    }
 }
 
 void Orchestrator_SetProgressCallback(PeakMode::Orchestrator* inst,

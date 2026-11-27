@@ -103,6 +103,15 @@ bool end(const std::string& session, const char* reason, const char* result,
     return append(ev);
 }
 
+bool gpu(const std::string& session, const std::string& process, const std::string& adapter,
+         const std::string& role) {
+    json ev = event("gpu", session);
+    ev["process"] = process;
+    ev["adapter"] = adapter;
+    ev["role"]    = role;
+    return append(ev);
+}
+
 json readAll() {
     std::lock_guard<std::mutex> lock(g_mutex);
     json out = json::array();
