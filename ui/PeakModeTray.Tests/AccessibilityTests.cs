@@ -57,9 +57,9 @@ public sealed class AccessibilityTests
     [Fact]
     public void EverySidebarPageIsReachable()
     {
-        // Four nav items, none disabled, each with a Checked handler
+        // Five nav items, none disabled, each with a Checked handler
         var nav = Window.Descendants(P + "RadioButton").Where(e => (string?)e.Attribute("GroupName") == "nav").ToList();
-        Assert.Equal(new[] { "Boost", "Tweaks", "History", "Settings" }, nav.Select(e => (string?)e.Attribute("Content")));
+        Assert.Equal(new[] { "Boost", "Tweaks", "Checkup", "History", "Settings" }, nav.Select(e => (string?)e.Attribute("Content")));
         Assert.All(nav, e => Assert.Null(e.Attribute("IsEnabled")));
         Assert.All(nav, e => Assert.NotNull(e.Attribute("Checked")));
     }

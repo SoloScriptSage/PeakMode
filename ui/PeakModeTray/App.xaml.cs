@@ -106,7 +106,8 @@ namespace PeakModeTray
             store.Changed += boost.ProfileChanged;
             var settings = new ViewModels.SettingsViewModel(VersionText(), configPath, TrayApp.LogPath,
                 AppContext.BaseDirectory, TrayApp.ShellOpen);
-            return new ViewModels.MainViewModel(boost, tweaks, new ViewModels.HistoryViewModel(core), settings);
+            var checkup = new ViewModels.CheckupViewModel(core, TrayApp.ShellOpen);
+            return new ViewModels.MainViewModel(boost, tweaks, checkup, new ViewModels.HistoryViewModel(core), settings);
         }
 
         internal static string VersionText()

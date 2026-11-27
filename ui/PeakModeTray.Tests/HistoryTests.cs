@@ -52,6 +52,22 @@ public class HistoryTests
     }
 
     [Fact]
+    public void GpuEventsDoNotChangeTheSession()
+    {
+        // PC Checkup records the boosted game's GPU while active
+        string gpu = Ev("gpu", "A", T0.AddMinutes(1), 10,
+            ",\"process\":\"game.exe\",\"adapter\":\"NVIDIA GeForce RTX 3050 Ti Laptop GPU\",\"role\":\"discrete\"");
+        var s = Assert.Single(Parse(Log(
+            Ev("begin",  "A", T0, 10, ",\"profile\":\"gaming\""),
+            Ev("active", "A", T0.AddSeconds(1), 10, TwoEntries),
+            gpu,
+            Ev("end",    "A", T0.AddMinutes(3), 10, End("window")))));
+        Assert.Equal("CLEAN", s.Badge);
+        Assert.Equal("3 min", s.ActiveFor);
+        Assert.Equal(2, s.Entries.Count);
+    }
+
+    [Fact]
     public void EndFromAnotherProcessIsAfterCrash()
     {
         var s = Assert.Single(Parse(Log(
