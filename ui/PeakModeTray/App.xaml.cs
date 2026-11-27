@@ -15,6 +15,12 @@ namespace PeakModeTray
         private TrayApp?     _trayApp;
         private CoreService? _core;
         private Mutex?       _singleInstance;
+        private Checkup.BoostGpuRecorder? _gpuRecorder;
+
+        // PC Checkup: during a boost, record which GPU the target process uses
+        private static Checkup.BoostGpuRecorder StartGpuRecorder(ICoreService core, string? configPath) =>
+            new(core, () => new ProfileStore(configPath).GetString("windows", "targetProcess"),
+                new Checkup.GpuUsageSampler(new Checkup.SystemReader()));
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -36,7 +42,9 @@ namespace PeakModeTray
                 // The preview never stops real services, so it can't read them:
                 // --preview-restarted simulates Windows restarting WSearch (#7)
                 bool restarted = Array.IndexOf(e.Args, "--preview-restarted") >= 0;
-                var preview = new MainWindow(CreateMainViewModel(core, PreviewConfig(),
+                string? previewConfig = PreviewConfig();
+                _gpuRecorder = StartGpuRecorder(core, previewConfig);
+                var preview = new MainWindow(CreateMainViewModel(core, previewConfig,
                     () => On() ? "High performance" : "Balanced", () => On() ? 0.5 : 15.625,
                     name => restarted && name == "WSearch"))
                 {
@@ -73,6 +81,7 @@ namespace PeakModeTray
             {
                 _core    = new CoreService(Dispatcher);
                 _trayApp = new TrayApp(_core, ShutdownAll, OpenWindow);
+                _gpuRecorder = StartGpuRecorder(_core, TrayApp.FindConfig());
             }
             catch (DllNotFoundException)
             {
@@ -136,6 +145,7 @@ namespace PeakModeTray
 
         protected override void OnExit(ExitEventArgs e)
         {
+            _gpuRecorder?.Dispose();
             _core?.Dispose();
             _singleInstance?.Dispose();
             base.OnExit(e);

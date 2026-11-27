@@ -17,5 +17,10 @@ namespace PeakModeTray
         Task<CoreResult> ActivateAsync(string configPath);
         Task<CoreResult> RestoreAsync(int reason);
         string           ReadSessions();   // JSON array, oldest first
+
+        // PC Checkup: adds a "gpu" event to the active session. Only writes
+        // the session log; false when nothing is active. May block while an
+        // activate or restore runs, so call it off the UI thread.
+        bool RecordGpu(string process, string adapter, string role) => false;
     }
 }

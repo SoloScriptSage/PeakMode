@@ -86,6 +86,12 @@ namespace PeakModeTray
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern int PeakMode_ReadSessions(byte[]? buf, int bufLen);
 
+        // PC Checkup: the GPU the boosted process used, as a "gpu" session event.
+        // OK, or NothingToRestore when no boost of this process is active.
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PeakMode_RecordGpu([MarshalAs(UnmanagedType.LPUTF8Str)] string process,
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string adapter, [MarshalAs(UnmanagedType.LPUTF8Str)] string role);
+
         public static string LastError() => ReadString(PeakMode_GetLastError);
 
         // JSON array of session events, oldest first

@@ -18,6 +18,12 @@ namespace PeakModeTray
     {
         public string ReadSessions() => PeakModeCore.ReadSessions();
 
+        public bool RecordGpu(string process, string adapter, string role)
+        {
+            try { return PeakModeCore.PeakMode_RecordGpu(process, adapter, role) == PeakModeCore.OK; }
+            catch (EntryPointNotFoundException) { return false; }   // older core DLL
+        }
+
         private readonly IntPtr                    _core;
         private readonly Dispatcher                _ui;
         private readonly SemaphoreSlim             _gate = new(1, 1);
