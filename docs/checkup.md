@@ -31,8 +31,10 @@ Radeon graphics, RTX 3050 Ti Laptop GPU, 2560 × 1440 240 Hz external display) t
 | Thermal zone | "Thermal Zone Information" performance counter | Yes | Yes |
 | Thermal zone | `MSAcpi_ThermalZoneTemperature` (WMI) | Yes | **Access denied** |
 
-The app's own readers (SMBIOS, SetupAPI, `NtQuerySystemInformation`, PDH) are covered by
-read-only tests that were also run without elevation; see the README test table.
+The app reads the same things with its own P/Invoke readers (SMBIOS, SetupAPI,
+`NtQuerySystemInformation`, D3DKMT, PDH; `ui/PeakModeTray/Checkup/`), with no new packages. Their
+read-only tests (`CheckupReaderTests`) pass both elevated and at Medium integrity on the test PC.
+Not tried: a separate standard user account.
 
 Findings that shaped the checks:
 
@@ -45,6 +47,9 @@ Findings that shaped the checks:
   Software adapters are skipped.
 - `D3DKMT_ADAPTER_PERFDATA.PowerStateOverride` read 0 for the NVIDIA GPU while it drove a display,
   so it is not used.
+- SMBIOS reports the SODIMMs as form factor 0x0D; `Win32_PhysicalMemory` reports 12, because WMI
+  uses its own CIM values. The app uses the SMBIOS values.
+- Both displays on the test PC are external monitors; their names come from `QueryDisplayConfig`.
 - Enum values come from the SDK headers (10.0.22621), not from the documentation pages, which
   list no numbers: `KMTQAITYPE_ADAPTERPERFDATA` = 62, `KMTQAITYPE_ADAPTERTYPE` = 15,
   `KMTQAITYPE_ADAPTERREGISTRYINFO` = 8 (`shared/d3dkmthk.h`); `EFFECTIVE_POWER_MODE` 0 to 6
@@ -85,9 +90,11 @@ Findings that shaped the checks:
 - **Reads:** adapters with their hybrid role and LUID (D3DKMT), driver version and date
   (SetupAPI `DEVPKEY_Device_DriverVersion`, `DEVPKEY_Device_DriverDate`), and the newest `gpu`
   event in the session log.
-- **Recording during a boost:** while a boost with a target process is active, the tray samples the
-  "GPU Engine" counters of that process (3D engine utilization per adapter LUID) and the core
-  appends one `gpu` event to `sessions.jsonl`: process, adapter name, hybrid role.
+- **Recording during a boost:** while a boost with a target process is active, the tray waits
+  10 s, then samples the "GPU Engine" 3D utilization of that process for 1 s and sums it per
+  adapter LUID. The adapter with the most use is recorded once per boost: the core appends a `gpu`
+  event to `sessions.jsonl` (process, adapter name, hybrid role) through `PeakMode_RecordGpu`. If no
+  3D use is seen yet, it tries again every 30 s, up to 10 times. Restore or exit stops it.
 - **Worth checking:** the last boosted game ran on the integrated GPU while a discrete one exists,
   or a driver is older than 12 months.
 - **Can't tell:** which GPU a game used outside a boost; whether a newer driver exists (the date is

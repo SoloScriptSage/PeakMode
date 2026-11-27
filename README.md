@@ -44,10 +44,11 @@ Adapter settings only take effect after the adapter restarts, so with `interrupt
 
 ## The main window
 
-New in 0.2.0. Open it from the tray menu (**Open PeakMode**). Closing the window hides it; the tray keeps running.
+New in 0.2.0. Open it from the tray menu (**Open PeakMode**). Closing the window hides it; the tray keeps running. Screens: Boost, Tweaks, Checkup (0.3.0), History and Settings.
 
 - **Boost.** The logo is the button: a tachometer whose needle moves as the core applies each step, then revs at the redline while active. Four cards show the changes applied, the snapshot state, the active power plan and the global timer resolution (information only: games set their own timer, [#9](https://github.com/SoloScriptSage/PeakMode/issues/9)). Below, one card per tweak shows READY, APPLYING, APPLIED, SKIPPED or RESTORED. Clicking the gauge again restores everything, newest change first. With Windows "Show animations" off, the gauge jumps between states.
 - **Tweaks.** Every module with a one-line description, a risk tag (SAFE or NETWORK BLIP), how many values it saves, and a switch that writes to `config\peakmode.json`. Expand a row to see exactly what changes, how it is restored and what it needs. The target process is set here too. Switches are locked while a boost is active.
+- **Checkup.** New in 0.3.0, read-only: six checks of things outside a boost that often cost more than any tweak. Display refresh rate below the monitor's highest, memory slower than its rated speed, battery or power mode, GPU driver age and which GPU the last boosted game ran on, Memory Integrity (information only), and temperatures (GPU, and the ACPI thermal zone, labeled as not the CPU core temperature). Each row is OK, WORTH CHECKING or INFO with a one-line fix you make yourself; PeakMode changes none of it. What each check reads and can't tell: [docs/checkup.md](docs/checkup.md).
 - **History.** Every boost and restore from the session log: when, how many settings, how it ended (CLEAN, AFTER CRASH, PARTIAL), how long it was active and what restored it. The selected session lists its snapshot entries with the value before and during the boost. If PeakMode was still active when it last closed, a banner offers RESTORE NOW.
 
 <p align="center">
@@ -123,8 +124,12 @@ If something is ever left tweaked, see [RECOVERY.md](scripts/RECOVERY.md) (also 
 ```
 PeakModeTray.exe  (C# WPF tray app and main window, .NET 8, self-contained)
   TrayApp          tray icon and menu, restore prompt, restore on logoff
-  MainWindow       Boost, Tweaks and History screens (view models in ViewModels/)
+  MainWindow       Boost, Tweaks, Checkup, History and Settings screens
+                   (view models in ViewModels/)
   ProfileStore     reads and writes config\peakmode.json for the Tweaks screen
+  Checkup/         read-only system readers (P/Invoke: display modes, SMBIOS,
+                   power, D3DKMT, SetupAPI, code integrity, PDH), the check
+                   rules, and the GPU sample taken during a boost
   CoreService      the only caller of the DLL: runs activate/restore one at a
                    time on a worker thread, raises progress and state events
                    on the UI thread, passes the restore reason
@@ -138,7 +143,8 @@ PeakModeCore.dll  (C++20)
   Snapshot         write-ahead journal in C:\ProgramData\PeakMode, entries
                    tagged with the step that recorded them
   SessionLog       append-only sessions.jsonl: begin, active (entries), end
-                   (reason, result, restored, failed)
+                   (reason, result, restored, failed), gpu (the GPU the
+                   boosted game used, for the Checkup)
   Registry         journaled HKLM writes, restricted to known keys
   Modules
     WindowsTweaks    priority, affinity, timer, power plan, Nagle, services
@@ -228,7 +234,13 @@ All on-machine tests ran on one PC: Windows 11 Pro 23H2 (22631), AMD Ryzen 7 480
 | 0.2.1: Background services card shows RESTARTED on a real boost ([#7](https://github.com/SoloScriptSage/PeakMode/issues/7)) | **Untested** | | Fake core and service reader in tests; the real service query is tested read-only |
 | 0.2.1: `scripts/timer-resolution-check.ps1` while PeakMode is active | Yes | Yes | Two cycles on Windows 11 22631: global value 1 → 0.5 → 1 ms, but Sleep(1) in a process that asks for nothing stayed at about 15.5 ms in every run. The request does not reach other processes ([#9](https://github.com/SoloScriptSage/PeakMode/issues/9)) |
 | 0.3.0: UI unit tests (adds timer opt-in, info-only Timer card, #9 link) | Yes (118 pass) | | Locally; fake core, configs in a temp folder, the real timer query is read-only |
-| 0.3.0: info-only Timer card and the Tweaks opt-in note in the real window | **Untested** | | Built and unit-tested only |
+| 0.3.0: info-only Timer card and the Tweaks opt-in note in the real window | **Untested** | | Built and unit-tested only; the Tweaks note also seen in an off-screen render |
+| 0.3.0: PC Checkup reads without admin | Yes | | `scripts/checkup-probe.ps1` elevated and at Medium integrity (started through explorer.exe), and the app's reader tests at Medium integrity; only `MSAcpi_ThermalZoneTemperature` needs admin, so it is not used. Not tried from a separate standard user account. [Results](docs/checkup.md) |
+| 0.3.0: PC Checkup readers on the test PC | Yes | | Two external displays (165 of 240 Hz on one), 2 × DDR4-3200 SODIMM at 3200, NVIDIA and AMD adapters with hybrid roles, driver versions and dates, Memory Integrity off, GPU and thermal-zone temperatures |
+| 0.3.0: GPU of the boosted game | Partly | | Counter sampling checked by hand on a running game (its 3D load on the LUID read as the discrete GPU); the recorder and the core "gpu" event are unit-tested and self-tested. A real boost with a target process: **untested** |
+| 0.3.0: Checkup screen in the real window | **Untested** | | Off-screen render of the real XAML in the UI tests; not opened by hand |
+| 0.3.0: Checkup on Intel, desktop, single-GPU or HVCI-on PCs | **Untested** | | Rules covered by unit tests on fake readings |
+| 0.3.0: UI unit tests (adds the Checkup readers, rules, screen and GPU recorder) | Yes (177 pass) | | Locally |
 
 ---
 
@@ -265,6 +277,7 @@ Fixed in 0.2.0:
 Make every tweak that shows APPLIED actually hold for the whole boost, and add only what the documentation supports ([tweak verdicts](docs/tweak-verdicts.md)):
 
 - [x] [#9](https://github.com/SoloScriptSage/PeakMode/issues/9) Timer resolution: measured that the request does not reach other processes; `windows.setTimerResolution` is now off by default and the Timer card is information only
+- [x] PC Checkup screen: read-only checks with a fix the user makes ([docs/checkup.md](docs/checkup.md))
 - [ ] [#7](https://github.com/SoloScriptSage/PeakMode/issues/7) Confirm on a real boost that the Background services card shows RESTARTED (added in 0.2.1), and decide whether to keep WSearch stopped or turn `disableSearchIndex` off by default
 - [ ] [#1](https://github.com/SoloScriptSage/PeakMode/issues/1), [#2](https://github.com/SoloScriptSage/PeakMode/issues/2), [#3](https://github.com/SoloScriptSage/PeakMode/issues/3) Snapshot ownership between processes
 - [ ] New tweaks rated ADD: processor boost mode Aggressive and energy performance preference 0, on the active power plan, journaled and restored

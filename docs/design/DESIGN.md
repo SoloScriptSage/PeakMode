@@ -1,6 +1,7 @@
 # PeakMode UI design (v0.2.0)
 
-Reference mockups: `boost.reference.html`, `tweaks.reference.html`, `history.reference.html`.
+Reference mockups: `boost.reference.html`, `tweaks.reference.html`, `history.reference.html`,
+`checkup.reference.html` (0.3.0).
 They were made in a web design tool, so they are HTML, not XAML. Use them for layout, colors,
 copy and behavior. The `class Component` script at the bottom of each file shows the exact
 state logic of the mockup. Do not ship HTML; rebuild the UI in WPF.
@@ -9,7 +10,7 @@ Live mockup (owner only): https://claude.ai/artifact/EzmNk9XcEjQ536qb5nwC44
 
 ## Window
 
-- One main window with a left sidebar (Boost, Tweaks, History, Settings) and a content area.
+- One main window with a left sidebar (Boost, Tweaks, Checkup, History, Settings) and a content area.
 - Opened from the tray icon. The tray stays as it is today; closing the window hides it to the tray.
 - Min size about 1100 x 720. Dark only.
 
@@ -95,6 +96,28 @@ report progress per module (callback or polling) so the UI moves when the core m
   before → during, green check when restored.
 - Needs a small session log (append-only JSON in C:\ProgramData\PeakMode, same ACL as the
   snapshot). Never store anything outside that folder.
+
+## Screen 4: PC Checkup (0.3.0)
+
+Reference: `checkup.reference.html` (static HTML, no state script). What each check reads and
+the status rules: [../checkup.md](../checkup.md).
+
+- Sidebar item after Tweaks. Eyebrow "READ ONLY · NOTHING IS CHANGED", title PC CHECKUP,
+  RE-CHECK button on the right.
+- 3 summary counters like Tweaks: OK (green number), WORTH CHECKING (amber when above 0), INFO
+  (muted). Under them: "Checked HH:mm. Read only: nothing here changes your PC."
+- One row per check, same card as a tweak row (cut corner 14): icon, name, one-line detail,
+  value (mono, right), status tag, expand chevron. Tags: OK green, WORTH CHECKING amber, INFO
+  muted with the strong border.
+- HOW TO FIX: amber left bar on the amber background, amber-text body. Always shown when the
+  row has a fix, open or not. Rows that are worth checking start open.
+- Expanded: a neutral note (dim surface, strong-border left bar, muted label, soft text; ON
+  LAPTOPS or ABOUT), then key/value lines like the Tweaks details (read from, also, can't tell).
+  Memory Integrity's note has a MICROSOFT link button.
+- Memory Integrity and Temperatures are always INFO. The thermal zone is never shown without
+  "not the CPU core temperature".
+- The checks run off the UI thread when the page is shown and on RE-CHECK; a row keeps its
+  open state while its status stays the same.
 
 ## Accessibility
 
