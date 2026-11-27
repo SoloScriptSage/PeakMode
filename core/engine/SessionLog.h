@@ -18,6 +18,9 @@ namespace PeakMode {
 //             active after the steps, "" if unknown)
 //   end     + "reason" (see RestoreReason), "result" ("ok" | "partial"),
 //             "restored", "failed"
+//   gpu     + "process", "adapter" (name), "role" ("discrete" | "integrated"
+//             | ""): the GPU the boosted process used, sampled by the tray
+//             while active (PC Checkup). At most a few per session.
 // A session restored by another process than the one that began it (crash,
 // kill, reboot) has an end event with a different pid. A partial restore
 // can be followed by more end events for the same session; the last wins.
@@ -31,6 +34,8 @@ bool active(const std::string& session, const nlohmann::json& entries,
             const std::string& powerScheme);
 bool end(const std::string& session, const char* reason, const char* result,
          int restored, int failed);
+bool gpu(const std::string& session, const std::string& process, const std::string& adapter,
+         const std::string& role);
 
 // All events, oldest first (old file, then current). Unreadable lines are
 // skipped. Always an array.

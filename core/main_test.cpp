@@ -420,7 +420,14 @@ static void testSessions() {
     CHECK(SessionLog::begin("s1", "gaming"));
     CHECK(SessionLog::active("s1", Snapshot::Entry::array({ { { "kind", "t" } } }), "{G}"));
     CHECK(SessionLog::end("s1", "tray", "ok", 1, 0));
+    CHECK(SessionLog::gpu("s1", "game.exe", "GPU X", "discrete"));
     all = SessionLog::readAll();
+    CHECK(all.size() == 4);
+    if (all.size() == 4) {
+        CHECK(all[3]["type"] == "gpu" && all[3]["process"] == "game.exe" &&
+              all[3]["adapter"] == "GPU X" && all[3]["role"] == "discrete");
+        all.erase(3);
+    }
     CHECK(all.size() == 3);
     if (all.size() == 3) {
         CHECK(all[0]["type"] == "begin" && all[0]["profile"] == "gaming");
@@ -437,7 +444,7 @@ static void testSessions() {
     // Unreadable lines are skipped, later events still read
     CHECK(Snapshot::appendToStateFile(SessionLog::kFile, "garbage\n{\"no\":1}\n\n{ broken\r\n"));
     CHECK(SessionLog::end("s1", "tray", "ok", 1, 0));
-    CHECK(SessionLog::readAll().size() == 4);
+    CHECK(SessionLog::readAll().size() == 5);
 
     // Rotation keeps one old copy, read before the current file
     clear();
@@ -467,6 +474,8 @@ static void testSessions() {
     auto& orch = Orchestrator::instance();
     std::vector<Ev> cev;
     Orchestrator_SetProgressCallback(&orch, &collectEvent, &cev);
+    CHECK(PeakMode_RecordGpu("game.exe", "GPU X", "discrete") == PM_ERR_NOTHING);   // not active
+    CHECK(SessionLog::readAll().empty());
     CHECK(orch.activate(Narrow(cfg)) == PM_OK);
     CHECK((cev == std::vector<Ev>{ { PM_EV_DONE, -1, PM_OK, 0 } }));
     CHECK(orch.state() == ProfileState::ACTIVE);
@@ -484,15 +493,28 @@ static void testSessions() {
         CHECK(all[1]["type"] == "active" && all[1]["session"] == sid && all[1]["entries"].empty());
         CHECK(all[1]["powerScheme"].is_string());
     }
+    // gpu event while active: attached to this session; unknown role and long names cut
+    CHECK(PeakMode_RecordGpu("game.exe", std::string(300, 'x').c_str(), "dgpu") == PM_OK);
+    CHECK(PeakMode_RecordGpu(nullptr, nullptr, nullptr) == PM_OK);
+    CHECK(orch.recordGpu("game.exe", "AMD \xC3\xA9", "integrated") == PM_OK);
+    all = SessionLog::readAll();
+    CHECK(all.size() == 5);
+    if (all.size() == 5) {
+        CHECK(all[2]["type"] == "gpu" && all[2]["session"] == sid && all[2]["process"] == "game.exe" &&
+              all[2]["adapter"].get<std::string>().size() == 260 && all[2]["role"] == "");
+        CHECK(all[3]["process"] == "" && all[3]["adapter"] == "" && all[3]["role"] == "");
+        CHECK(all[4]["adapter"] == "AMD \xC3\xA9" && all[4]["role"] == "integrated");
+    }
     cev.clear();
     CHECK(Orchestrator_RestoreWithReason(&orch, PM_REASON_WINDOW) == PM_OK);
     CHECK((cev == std::vector<Ev>{ { PM_EV_RESTORE_BEGIN, -1, 0, 0 }, { PM_EV_DONE, -1, PM_OK, 0 } }));
     CHECK(!Snapshot::exists() && orch.state() == ProfileState::IDLE);
+    CHECK(PeakMode_RecordGpu("game.exe", "GPU X", "discrete") == PM_ERR_NOTHING);   // restored
     all = SessionLog::readAll();
-    CHECK(all.size() == 3);
-    if (all.size() == 3) {
-        CHECK(all[2]["type"] == "end" && all[2]["session"] == sid && all[2]["reason"] == "window" &&
-              all[2]["result"] == "ok" && all[2]["restored"] == 0 && all[2]["failed"] == 0);
+    CHECK(all.size() == 6);
+    if (all.size() == 6) {
+        CHECK(all[5]["type"] == "end" && all[5]["session"] == sid && all[5]["reason"] == "window" &&
+              all[5]["result"] == "ok" && all[5]["restored"] == 0 && all[5]["failed"] == 0);
     }
     Orchestrator_SetProgressCallback(&orch, nullptr, nullptr);
 
@@ -507,10 +529,10 @@ static void testSessions() {
     CHECK(orch.state() == ProfileState::RESTORE_PENDING);
     CHECK(orch.restore(PM_REASON_CRASH_PROMPT) == PM_ERR_PARTIAL);
     all = SessionLog::readAll();
-    CHECK(all.size() == 4);
-    if (all.size() == 4) {
-        CHECK(all[3]["session"] == "2026-01-02T03:04:05Z-4242" && all[3]["reason"] == "crashPrompt" &&
-              all[3]["result"] == "partial" && all[3]["failed"] == 1 && all[3]["pid"] == pid);
+    CHECK(all.size() == 7);
+    if (all.size() == 7) {
+        CHECK(all[6]["session"] == "2026-01-02T03:04:05Z-4242" && all[6]["reason"] == "crashPrompt" &&
+              all[6]["result"] == "partial" && all[6]["failed"] == 1 && all[6]["pid"] == pid);
     }
 
     // A corrupt snapshot has no session to attach an end event to
@@ -520,7 +542,7 @@ static void testSessions() {
         fclose(f);
     }
     CHECK(orch.restore(PM_REASON_BANNER) == PM_ERR_PARTIAL);
-    CHECK(SessionLog::readAll().size() == 4);
+    CHECK(SessionLog::readAll().size() == 7);
     DeleteFileW(Snapshot::filePath().c_str());
 
     // C export: same JSON, two-call pattern, truncation
